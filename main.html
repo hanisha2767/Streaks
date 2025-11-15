@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Streaks Dashboard</title>
+  <link rel="stylesheet" href="/css/styles-main.css" />
+  <link rel="icon" type="image/png" href="/images/logo1.png">
+</head>
+<body>
+  <!-- Sidebar -->
+  <nav class="side-bar">
+    <div>
+      <div class="name">
+        <img class="icon-logo" src="/images/logo.png" alt="logo">
+        <img class="title" src="/images/title.png" alt="title">
+      </div>
+      <div class="nav-bar-icons active" data-section="dashboard">
+        <img class="small-logo" src="/images/dashboard.png" alt="">
+        <p>DASHBOARD</p>
+      </div>
+      <div class="nav-bar-icons" data-section="habits">
+        <img class="small-logo" src="/images/habits.png" alt="">
+        <p>HABITS</p>
+      </div>
+      <div class="nav-bar-icons" data-section="todo">
+        <img class="small-logo" src="/images/Tick.png" alt="">
+        <p>TO DO LIST</p>
+      </div>
+      <div class="nav-bar-icons" data-section="reminders">
+        <img class="small-logo" src="/images/dailies.png" alt="">
+        <p>REMAINDERS</p>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Top Bar -->
+  <nav class="top-bar">
+    <div class="info-1">
+      <div class="info"><img class="small-logo-3" src="/images/reload.png" alt=""></div>
+      <div class="profile">
+        <div class="profile-info">
+          <p class="para">@user-name</p>
+          <p class="para">user-name1@gmail.com</p>
+        </div>
+        <img class="profile-pic" src="/images/prf.png" alt="profile">
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div id="main-content">
+    <section id="dashboard-section">
+      <div class="date-div">
+        <p class="date"><span class="date-num">04</span> Nov 2025</p>
+        <div class="middle-part">
+          <div class="box-1">
+            <p class="title-middle">Daily Summary</p>
+            <p class="middle-p">To do tasks: <span id="todo-count">0</span></p>
+            <p class="middle-p">Focus Hours: <span id="focus-hours">0</span> hrs</p>
+          </div>
+          <div class="box-1">
+            <p class="title-middle">Habits</p>
+            <p class="middle-p"><span id="habits-completed">0</span>/<span id="habits-total">0</span> completed</p>
+          </div>
+          <div class="box-1">
+            <p class="title-middle">Reminders</p>
+            <p class="middle-p">Upcoming: <span id="reminders-upcoming">0</span></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <!-- inside .charts-grid (Dashboard section) -->
+        <div class="chart-container">
+          <p class="title-middle">Focus Hours (This Week)</p>
+          <canvas id="focusWeekChart"></canvas>
+        </div>
+        
+        <div class="chart-container">
+          <p class="title-middle">Habits Overview</p>
+          <canvas id="habitsPie"></canvas>
+        </div>
+      </div>
+    </section>
+  </div>  
+
+  <!-- To-Do Modal -->
+  <div id="todoModal" class="modal hidden">
+    <div class="modal-card">
+      <h2 id="todoModalTitle">Add Task</h2>
+      <label class="form-row">
+        <span>Task Name</span>
+        <input id="taskName" type="text" placeholder="e.g. Complete assignment">
+      </label>
+      <label class="form-row">
+        <span>Due Date</span>
+        <input id="taskDueDate" type="date">
+      </label>
+      <label class="form-row">
+        <span>Priority</span>
+        <select id="taskPriority">
+          <option value="Low">Low</option>
+          <option value="Medium" selected>Medium</option>
+          <option value="High">High</option>
+        </select>
+      </label>
+      <label class="form-row">
+        <span>Focus Time (minutes)</span>
+        <input id="taskTime" type="number" min="0" placeholder="e.g. 45">
+      </label>
+      <div class="modal-actions">
+        <button id="cancelTask" class="btn ghost">Cancel</button>
+        <button id="saveTask" class="btn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Habit Modal -->
+<div id="habitModal" class="modal hidden">
+  <div class="modal-card">
+    <h2 id="modalTitle">Add Habit</h2>
+    <label class="form-row">
+      <span>Habit Name</span>
+      <input id="habitName" type="text" placeholder="e.g. Read 30 mins">
+    </label>
+    <label class="form-row">
+      <span>Frequency</span>
+      <div class="radio-row">
+        <label><input type="radio" name="freq" value="daily" checked> Daily</label>
+        <label><input type="radio" name="freq" value="weekdays"> Weekdays</label>
+        <label><input type="radio" name="freq" value="weekends"> Weekends</label>
+        <label><input type="radio" name="freq" value="custom"> Custom</label>
+      </div>
+    </label>
+    <div id="customDays" class="form-row hidden">
+      <span>Select days</span>
+      <div class="days-grid">
+        <label><input type="checkbox" data-day="0"> Sun</label>
+        <label><input type="checkbox" data-day="1"> Mon</label>
+        <label><input type="checkbox" data-day="2"> Tue</label>
+        <label><input type="checkbox" data-day="3"> Wed</label>
+        <label><input type="checkbox" data-day="4"> Thu</label>
+        <label><input type="checkbox" data-day="5"> Fri</label>
+        <label><input type="checkbox" data-day="6"> Sat</label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button id="cancelHabit" class="btn ghost">Cancel</button>
+      <button id="saveHabit" class="btn">Save</button>
+    </div>
+  </div>
+</div>
+
+  <!-- Reminder Modal -->
+  <div id="reminderModal" class="modal hidden">
+    <div class="modal-card">
+      <h2 id="reminderModalTitle">Add Reminder</h2>
+      <label class="form-row">
+        <span>Title</span>
+        <input id="reminderTitle" type="text" placeholder="e.g. Drink water">
+      </label>
+      <label class="form-row">
+        <span>Date</span>
+        <input id="reminderDate" type="date">
+      </label>
+      <label class="form-row">
+        <span>Time</span>
+        <input id="reminderTime" type="time">
+      </label>
+      <div class="modal-actions">
+        <button id="cancelReminder" class="btn ghost">Cancel</button>
+        <button id="saveReminder" class="btn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>
