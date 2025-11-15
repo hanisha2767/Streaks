@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Streaks</title>
+
+  <link rel="icon" type="image/png" href="images/logo1.png" />
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Poppins:wght@300;400;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="css/styles-sign-up.css" />
+</head>
+<body>
+
+  <nav>
+    <div class="con">
+      <div class="name">
+        <img class="icon-logo" src="images/logo.png">
+        <img class="title" src="images/title.png">
+      </div>
+      <ul class="info">
+        <li>Get Started</li>
+        <li>Mobile Apps</li>
+        <li>Learn More</li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="middle">
+    <div class="left-middle">
+      <p class="tag-line">
+        <span style="color:#05c26a">Welcome back!</span><br>
+        Log in to continue your journey.
+      </p>
+    </div>
+
+    <div class="right-middle">
+      <p class="sign-up">Log In</p>
+
+      <form id="loginForm">
+        <input id="email" class="input-box" type="email" placeholder="Email" required />
+        <input id="password" class="input-box" type="password" placeholder="Password" required />
+        <button type="submit" class="continue">Log In</button>
+      </form>
+
+      <p id="message" class="message"></p>
+
+      <p style="color:white; margin-top:10px;">
+        Don't have an account?
+        <a href="sign-up.html" style="color:#05c26a;">Sign up</a>
+      </p>
+    </div>
+  </div>
+
+  <script src="js/login.js"></script>
+</body>
+</html>
