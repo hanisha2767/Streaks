@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showMessage('Sign-up successful! Redirecting...', 'success');
 
     setTimeout(() => {
-      window.location.href = 'main.html'; // Redirect to dashboard
+      window.location.href = 'index.html'; // Redirect to dashboard
     }, 1200);
   });
 
