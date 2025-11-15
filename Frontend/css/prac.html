@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Streaks Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background-color: #2a303c;
+      color: #A6ADBA;
+      font-family: "Roboto", sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    /* Sidebar */
+    .side-bar {
+      width: 220px;
+      background-color: #323846;
+      padding: 30px 0 30px 20px;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      border-right: 2px solid #3d4558;
+    }
+
+    .name {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+
+    .icon-logo { width: 100px; }
+    .title { width: 120px; margin-left: -25px; }
+
+    .nav-bar-icons {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      margin-bottom: 25px;
+      background-color: #3a4150;
+      border-radius: 10px;
+      padding: 12px 15px;
+      width: 90%;
+      transition: all 0.3s ease;
+    }
+
+    .nav-bar-icons:hover { background-color: #404756; }
+
+    .nav-bar-icons.active {
+      background-color: #454d5e;
+      border-left: 5px solid #05c26a;
+      color: #e6e8ec;
+      font-weight: 600;
+      transform: scale(1.02);
+      width: 90%;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+    }
+
+    .small-logo {
+      width: 30px;
+      height: 30px;
+      margin-right: 12px;
+    }
+
+    /* Top bar */
+    .top-bar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      position: fixed;
+      top: 0;
+      left: 220px;
+      right: 0;
+      height: 80px;
+      background-color: #3a4150;
+      border-radius: 0 0 20px 20px;
+      padding: 0 40px;
+      z-index: 100;
+    }
+
+    .info-1 {
+      display: flex;
+      align-items: center;
+      gap: 25px;
+    }
+
+    .info {
+      display: flex;
+      align-items: center;
+      background-color: #323846;
+      padding: 8px 14px;
+      border-radius: 12px;
+    }
+
+    .info p { margin: 0 6px 0 0; font-weight: 500; }
+
+    .small-logo-1, .small-logo-2, .small-logo-3 { width: 35px; }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      background-color: #323846;
+      border-radius: 12px;
+      padding: 8px 14px;
+    }
+
+    .profile-pic {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: 2px solid #05c26a;
+      object-fit: cover;
+    }
+
+    .profile-info {
+      text-align: right;
+      margin-right: 10px;
+    }
+
+    .para { margin: 0; font-size: 13px; line-height: 1.3; }
+
+    /* Middle Section */
+    .date-div {
+      margin-left: 260px;
+      margin-top: 120px;
+      padding: 20px 40px;
+    }
+
+    .date {
+      font-size: 40px;
+      margin-bottom: 20px;
+      font-weight: 700;
+    }
+
+    .date-num { color: #05c26a; }
+
+    .middle-part {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 30px;
+    }
+
+    .box-1 {
+      background-color: #3a4150;
+      border-radius: 16px;
+      padding: 20px 25px;
+      min-width: 250px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      transition: 0.3s ease;
+    }
+
+    .box-1:hover { transform: translateY(-5px); background-color: #454d5e; }
+
+    .title-middle {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #05c26a;
+    }
+
+    .chart-container {
+      background-color: #3a4150;
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 30px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+
+    canvas {
+      max-width: 500px;
+      max-height: 300px;
+    }
+
+    .charts-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 30px;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <nav class="side-bar">
+    <div class="name">
+      <img class="icon-logo" src="/images/logo.png">
+      <img class="title" src="/images/title.png">
+    </div>
+    <div class="nav-bar-icons active">
+      <img class="small-logo" src="/images/dashboard.png">
+      <p>DASHBOARD</p>
+    </div>
+    <div class="nav-bar-icons">
+      <img class="small-logo" src="/images/habits.png">
+      <p>HABITS</p>
+    </div>
+    <div class="nav-bar-icons">
+      <img class="small-logo" src="/images/Tick.png">
+      <p>TO DO LIST</p>
+    </div>
+    <div class="nav-bar-icons">
+      <img class="small-logo" src="/images/dailies.png">
+      <p>REMAINDERS</p>
+    </div>
+  </nav>
+
+  <!-- Top Bar -->
+  <nav class="top-bar">
+    <div class="info-1">
+      <div class="info">
+        <p>10</p>
+        <img class="small-logo-1" src="/images/diamond1.png">
+      </div>
+      <div class="info">
+        <p>300</p>
+        <img class="small-logo-2" src="/images/coin.png">
+      </div>
+      <div class="info">
+        <img class="small-logo-3" src="/images/reload.png">
+      </div>
+      <div class="profile">
+        <div class="profile-info">
+          <p class="para">@user-name</p>
+          <p class="para">user-name1@gmail.com</p>
+        </div>
+        <img class="profile-pic" src="/images/prf.png">
+      </div>
+    </div>
+  </nav>
+
+  <!-- Middle Section -->
+  <div class="date-div">
+    <p class="date"><span class="date-num">04</span> Nov 2025</p>
+
+    <div class="middle-part">
+      <div class="box-1">
+        <p class="title-middle">Daily Summary</p>
+        <p>To do tasks: 7</p>
+        <p>Focus Hours: 2.5 hrs</p>
+      </div>
+      <div class="box-1">
+        <p class="title-middle">Habits</p>
+        <p>3/5 completed</p>
+      </div>
+      <div class="box-1">
+        <p class="title-middle">Reminders</p>
+        <p>Upcoming: 2</p>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+      <div class="chart-container">
+        <p class="title-middle">Focus Hours (This Week)</p>
+        <canvas id="focusChart"></canvas>
+      </div>
+
+      <div class="chart-container">
+        <p class="title-middle">Habits Overview</p>
+        <canvas id="habitsPie"></canvas>
+      </div>
+
+      <div class="chart-container">
+        <p class="title-middle">Habits Consistency</p>
+        <canvas id="habitsBar"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- JS for Charts -->
+  <script>
+    // Focus Hours (Line Chart)
+    new Chart(document.getElementById('focusChart'), {
+      type: 'line',
+      data: {
+        labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+        datasets: [{
+          label: 'Focus Hours',
+          data: [2, 3.5, 1.5, 4, 2.5, 3, 3.5],
+          borderColor: '#05c26a',
+          backgroundColor: 'rgba(5, 194, 106, 0.1)',
+          borderWidth: 2,
+          tension: 0.4,
+          fill: true,
+        }]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#A6ADBA' } } },
+        scales: {
+          x: { ticks: { color: '#A6ADBA' }, grid: { color: '#3d4558' } },
+          y: { ticks: { color: '#A6ADBA' }, grid: { color: '#3d4558' } }
+        }
+      }
+    });
+
+    // Habits Pie Chart
+    new Chart(document.getElementById('habitsPie'), {
+      type: 'pie',
+      data: {
+        labels: ['Completed', 'Missed', 'Pending'],
+        datasets: [{
+          data: [60, 25, 15],
+          backgroundColor: ['#05c26a', '#ff5252', '#ffca28'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#A6ADBA' } } }
+      }
+    });
+
+    // Habits Bar Chart
+    new Chart(document.getElementById('habitsBar'), {
+      type: 'bar',
+      data: {
+        labels: ['Drink Water', 'Workout', 'Read', 'Sleep Early', 'No Junk'],
+        datasets: [{
+          label: 'Days Done',
+          data: [6, 4, 5, 3, 2],
+          backgroundColor: '#05c26a',
+          borderRadius: 8
+        }]
+      },
+      options: {
+        plugins: { legend: { labels: { color: '#A6ADBA' } } },
+        scales: {
+          x: { ticks: { color: '#A6ADBA' }, grid: { color: '#3d4558' } },
+          y: { ticks: { color: '#A6ADBA' }, grid: { color: '#3d4558' } }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
