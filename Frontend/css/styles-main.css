@@ -4,6 +4,7 @@ body {
   color: #A6ADBA;
   font-family: "Roboto", sans-serif;
   margin: 0;
+  padding-bottom: 20px;
 }
 
 img {
@@ -553,3 +554,27 @@ canvas {
 
 .reminder-info p { margin: 3px 0; }
 .reminder-time { font-size: 13px; color: #A6ADBA; }
+
+.habit-calendar {
+  margin-top: 20px;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 14px); /* 7 days per column */
+  gap: 4px;
+}
+
+.calendar-cell {
+  width: 14px;
+  height: 14px;
+  background-color: #2d323f;      /* default (empty) */
+  border-radius: 3px;
+  transition: background-color 0.2s;
+}
+
+/* intensity levels (like GitHub) */
+.lvl-1 { background-color: #0e4429; }
+.lvl-2 { background-color: #006d32; }
+.lvl-3 { background-color: #26a641; }
+.lvl-4 { background-color: #39d353; }
