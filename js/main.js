@@ -316,13 +316,6 @@ function renderHabitsCard() {
       </div>
       <div class="habits-date">${readableDate()}</div>
       <ul id="habitList" class="habit-list"></ul>
-
-      <!-- <<< ADD THE CALENDAR HERE >>> -->
-      <div class="habit-calendar">
-        <h3>Habit Progress</h3>
-        <div class="calendar-grid"></div>
-      </div>
-
       <div class="card-controls">
         <button id="openAddBottom" class="btn ghost">Add habit</button>
         <div style="flex:1"></div>
@@ -340,11 +333,7 @@ function renderHabitsCard() {
   });
 
   renderTodaysList();
-
-  // ensure calendar loads whenever we render this card
-  setTimeout(loadHabitCalendar, 100);
 }
-
 
 function renderTodaysList() {
   const list = document.getElementById('habitList');
@@ -693,34 +682,3 @@ window.addEventListener('DOMContentLoaded', () => {
     console.warn('No user info found in localStorage.');
   }
 });
-
-function loadHabitCalendar() {
-  const grid = document.querySelector('.habits-card .calendar-grid');
-  if (!grid) return;
-
-  grid.innerHTML = ""; // clear previous
-
-  const data = Array.from({ length: 60 }, () => Math.floor(Math.random() * 5));
-
-  data.forEach(level => {
-    const cell = document.createElement('div');
-    cell.classList.add('calendar-cell');
-    if (level > 0) cell.classList.add(`lvl-${level}`);
-    grid.appendChild(cell);
-  });
-}
-
-// Load when habits page opens
-document.addEventListener("DOMContentLoaded", () => {
-  if (localStorage.getItem('activeSection') === 'habits') {
-    setTimeout(loadHabitCalendar, 200);
-  }
-});
-
-// Also load when user clicks Habits in sidebar
-document.querySelector('[data-section="habits"]').addEventListener('click', () => {
-  setTimeout(loadHabitCalendar, 200);
-});
-
-
-
