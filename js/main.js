@@ -241,18 +241,25 @@ function getWeekFocusData() {
   const now = new Date();
   const start = new Date(now);
   start.setDate(now.getDate() - now.getDay() + 1);
+
   const labels = [], hours = [];
 
   for (let i = 0; i < 7; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
+
     const key = todayKey(d);
-    const mins = tasks.filter(t => t.completedDate === key).reduce((s, t) => s + (Number(t.focusTime) || 0), 0);
+    const mins = tasks
+      .filter(t => t.completedDate === key)
+      .reduce((s, t) => s + (Number(t.focusTime) || 0), 0);
+
     labels.push(`${d.getDate()} ${d.toLocaleString('default',{month:'short'})}`);
-    hours.push((mins / 60).toFixed(1));
+    hours.push(Number((mins / 60).toFixed(1))); // FIXED
   }
+
   return { labels, hours };
 }
+
 
 function getHabitsPieData() {
   const habits = getHabits();
@@ -509,7 +516,7 @@ cb.addEventListener('change', e => {
   if (!task) return;
 
   task.completed = e.target.checked;
-  task.completedDate = e.target.checked ? todayKey() : null; // ← MUST SET THIS
+  task.completedDate = task.dueDate || todayKey();
 
   saveTasks(tasks);
   renderTaskList(filter);
@@ -610,9 +617,12 @@ function openReminderModal(editId = null) {
   const time = document.getElementById('reminderTime');
 
   modal.classList.remove('hidden');
-  title.value = ''; date.value = ''; time.value = '';
+  title.value = '';
+  date.value = '';
+  time.value = '';
   delete saveReminderBtn.dataset.editId;
 
+  // ---- EDIT MODE ----
   if (editId) {
     const r = getReminders().find(x => x.id === editId);
     if (r) {
@@ -624,28 +634,47 @@ function openReminderModal(editId = null) {
     }
   }
 
-  const saveHandler = () => {
+  // ---- RESET OLD EVENT LISTENERS ----
+  const newSaveBtn = saveReminderBtn.cloneNode(true);
+  saveReminderBtn.parentNode.replaceChild(newSaveBtn, saveReminderBtn);
+  saveReminderBtn = newSaveBtn;
+
+  // ---- SAVE HANDLER ----
+  saveReminderBtn.addEventListener('click', () => {
     const t = title.value.trim();
     const d = date.value;
     const tm = time.value;
-    if (!t || !d || !tm) return alert('Fill all fields');
+    if (!t || !d || !tm) return alert("Fill all fields");
+
     const datetime = new Date(`${d}T${tm}`);
-    if (isNaN(datetime)) return alert('Invalid date/time');
+    if (isNaN(datetime)) return alert("Invalid date/time");
 
     let reminders = getReminders();
+
     if (saveReminderBtn.dataset.editId) {
+      // EDIT REMINDER
       const idx = reminders.findIndex(x => x.id === saveReminderBtn.dataset.editId);
-      if (idx >= 0) reminders[idx] = { ...reminders[idx], title: t, datetime };
+      if (idx >= 0) {
+        reminders[idx] = {
+          ...reminders[idx],
+          title: t,
+          datetime: datetime.toISOString(),    // FIXED
+        };
+      }
     } else {
-      reminders.push({ id: String(Date.now()), title: t, datetime });
+      // NEW REMINDER
+      reminders.push({
+        id: String(Date.now()),
+        title: t,
+        datetime: datetime.toISOString(),      // FIXED
+      });
     }
+
     saveReminders(reminders);
-    modal.classList.add('hidden');
+    modal.classList.add("hidden");
     renderReminderList();
     updateDashboardStats();
-    saveReminderBtn.removeEventListener('click', saveHandler);
-  };
-  saveReminderBtn.addEventListener('click', saveHandler);
+  });
 }
 
 // ================= CALENDAR (Dashboard) =================
