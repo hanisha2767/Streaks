@@ -99,7 +99,33 @@ img {
 .profile-pic {
   width: 80px;
   border-radius: 10px;
+  margin-right: -20px;
 }
+.logout-wrapper {
+  position: relative;
+  cursor: pointer;
+}
+
+.logout-tooltip {
+  position: absolute;
+  bottom: -25px;
+  right: 0;
+  background: #000;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: 0.2s ease;
+  white-space: nowrap;
+}
+
+.logout-wrapper:hover .logout-tooltip {
+  opacity: 1;
+  bottom: -30px;
+}
+
 
 .small-logo-1 { width: 80px; margin-left: -15px; }
 .small-logo-2 { width: 70px; margin-left: -12px; }
@@ -111,13 +137,15 @@ img {
 .profile {
   display: flex;
   align-items: center;
-  gap: 10px;
-}
+  }
 
 .para {
   padding: 0;
   margin: 0;
   font-size: 13px;
+}
+.logo-logout{
+  width:45px;
 }
 
 /* ========== DASHBOARD ========== */

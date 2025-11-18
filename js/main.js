@@ -682,3 +682,20 @@ window.addEventListener('DOMContentLoaded', () => {
     console.warn('No user info found in localStorage.');
   }
 });
+
+// ===== LOGOUT BUTTON =====
+const logoutBtn = document.querySelector('.logo-logout');
+
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', () => {
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('activeSection');
+
+    // (optional) Clear everything if you want full reset:
+    // localStorage.clear();
+
+    window.location.href = "login.html"; // redirect
+  });
+}
+
