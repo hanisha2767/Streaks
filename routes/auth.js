@@ -1,3 +1,4 @@
+const authMiddleware = require("../middleware/authMiddleware");
 const express = require("express");
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
@@ -39,3 +40,13 @@ router.post("/login", async (req, res) => {
 });
 
 module.exports = router;
+
+// Get logged-in user info
+router.get("/me", authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id).select("-password");
+        res.json(user);
+    } catch (err) {
+        res.status(500).json({ msg: "Server error" });
+    }
+});
