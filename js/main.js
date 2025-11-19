@@ -129,7 +129,25 @@ window.addEventListener('DOMContentLoaded', () => {
       }
 
       const habits = getHabits();
-      const editId = saveHabitBtn.dataset.editId;
+      if (editId) {
+        const t = tasks.find(t => t.id === editId);
+        if (t) {
+            t.name = name;
+            t.dueDate = due;
+            t.focusTime = time;
+            t.matrixType = matrixType;
+        }
+    } else {
+        tasks.push({
+            id: String(Date.now()),
+            name,
+            dueDate: due,
+            focusTime: time,
+            matrixType,
+            completed: false
+        });
+    }
+    
 
       if (editId) {
         const idx = habits.findIndex(h => h.id === editId);
@@ -152,27 +170,50 @@ window.addEventListener('DOMContentLoaded', () => {
   // Save task
   document.addEventListener('click', e => {
     if (e.target && e.target.id === 'saveTask') {
+        
       const name = document.getElementById('taskName').value.trim();
       const due = document.getElementById('taskDueDate').value;
-      const priority = document.getElementById('taskPriority').value;
       const time = Number(document.getElementById('taskTime').value) || 0;
+      const matrixType = document.getElementById('taskMatrixType').value;
+  
       if (!name) return alert('Enter a task name');
-
+  
       const tasks = getTasks();
       const editId = saveTaskBtn.dataset.editId;
+  
       if (editId) {
         const t = tasks.find(t => t.id === editId);
-        if (t) Object.assign(t, { name, dueDate: due, priority, focusTime: time });
+        if (t) {
+          t.name = name;
+          t.dueDate = due;
+          t.focusTime = time;
+          t.matrixType = matrixType;
+        }
       } else {
-        tasks.push({ id: String(Date.now()), name, dueDate: due, priority, focusTime: time, completed: false });
+        tasks.push({
+          id: String(Date.now()),
+          name,
+          dueDate: due,
+          focusTime: time,
+          matrixType,
+          completed: false
+        });
       }
+  
       saveTasks(tasks);
       todoModal.classList.add('hidden');
-      renderTaskList('all');
+  
+      // 🔥🔥 MAIN FIX 🔥🔥
+      // Re-render the entire Matrix page
+      renderTodoPage();       
+  
+      // Load tasks into all 4 quadrants
+      renderMatrixTasks();
+  
       updateDashboardStats();
       renderDashboardCharts();
     }
-  });
+  });  
 
   // Top date
   const el = document.querySelector('.date');
@@ -437,33 +478,114 @@ function openHabitModal(editId = null) {
 // ================= TODO PAGE =================
 function renderTodoPage() {
   mainContent.innerHTML = `
-    <div class="habits-card todo-card">
-      <div class="card-header">
-        <h3>To-Do List</h3>
-        <div>
-          <button id="addTaskBtn" class="icon-btn">＋</button>
-          <button id="filterAll" class="icon-btn active-filter">All</button>
-          <button id="filterPending" class="icon-btn">Pending</button>
-          <button id="filterDone" class="icon-btn">Done</button>
-        </div>
+    <div class="matrix-page">
+
+      <div class="matrix-header">
+        <h1>To do list</h1>
+        <button id="newTaskMatrix" class="matrix-add-btn">＋ New Task</button>
       </div>
-      <ul id="taskList" class="habit-list"></ul>
-      <div class="card-controls">
-        <div></div>
-        <button id="refreshTasks" class="btn ghost">Refresh</button>
+
+      <div class="matrix-grid">
+
+        <div class="matrix-box q1" data-type="q1">
+          <h2>Urgent + Important</h2>
+          <p class="q-desc">Do First</p>
+          <div class="matrix-list" id="q1-list"></div>
+        </div>
+
+        <div class="matrix-box q2" data-type="q2">
+          <h2>Not Urgent + Important</h2>
+          <p class="q-desc">Schedule</p>
+          <div class="matrix-list" id="q2-list"></div>
+        </div>
+
+        <div class="matrix-box q3" data-type="q3">
+          <h2>Urgent + Not Important</h2>
+          <p class="q-desc">Delegate</p>
+          <div class="matrix-list" id="q3-list"></div>
+        </div>
+
+        <div class="matrix-box q4" data-type="q4">
+          <h2>Not Urgent + Not Important</h2>
+          <p class="q-desc">Eliminate</p>
+          <div class="matrix-list" id="q4-list"></div>
+        </div>
+
       </div>
     </div>
   `;
 
-  document.getElementById('addTaskBtn').addEventListener('click', () => openTodoModal());
-  document.getElementById('refreshTasks').addEventListener('click', () => renderTaskList('all'));
-
-  document.getElementById('filterAll').addEventListener('click', e => { setActiveFilter(e.target); renderTaskList('all'); });
-  document.getElementById('filterPending').addEventListener('click', e => { setActiveFilter(e.target); renderTaskList('pending'); });
-  document.getElementById('filterDone').addEventListener('click', e => { setActiveFilter(e.target); renderTaskList('done'); });
-
-  renderTaskList('all');
+  document.getElementById("newTaskMatrix").addEventListener("click", () => openTodoModal());
+  renderMatrixTasks();
 }
+
+function renderTaskGrid(filter = 'all') {
+  const grid = document.getElementById('taskGrid');
+  const search = document.getElementById('taskSearch').value.toLowerCase();
+
+  let tasks = getTasks();
+
+  // filtering
+  tasks = tasks.filter(t => {
+    if (search && !t.name.toLowerCase().includes(search)) return false;
+    if (filter === 'pending') return !t.completed;
+    if (filter === 'done') return t.completed;
+    if (filter === 'today') return t.dueDate === todayKey();
+    return true;
+  });
+
+  if (tasks.length === 0) {
+    grid.innerHTML = `<p class="todo-empty">No tasks to display.</p>`;
+    return;
+  }
+
+  grid.innerHTML = tasks.map(t => `
+    <div class="task-card ${t.focusTime ? `<span>⏱ ${t.focusTime} min</span>` : ""}>
+      <div class="task-top">
+        <input type="checkbox" class="task-check" data-id="${t.id}" ${t.completed ? "checked" : ""}>
+        <h3 class="task-name">${t.name}</h3>
+      </div>
+
+      <div class="task-details">
+        ${t.dueDate ? `<p class="task-info">📅 ${t.dueDate}</p>` : ""}
+        ${t.focusTime ? `<p class="task-info">⏱ ${t.focusTime} min</p>` : ""}
+      </div>
+
+      <div class="task-actions-grid">
+        <button class="task-btn edit-task" data-id="${t.id}">Edit</button>
+        <button class="task-btn del-task" data-id="${t.id}">Delete</button>
+      </div>
+    </div>
+  `).join("");
+
+  // checkbox handler
+  document.querySelectorAll('.task-check').forEach(cb => {
+    cb.addEventListener('change', (e) => {
+      const id = e.target.dataset.id;
+      const tasks = getTasks();
+      const t = tasks.find(x => x.id === id);
+      if (!t) return;
+
+      t.completed = e.target.checked;
+      t.completedDate = todayKey();
+      saveTasks(tasks);
+      renderTaskGrid(filter);
+      renderMatrixTasks();
+      updateDashboardStats();
+      renderDashboardCharts();
+    });
+  });
+
+  document.querySelectorAll('.edit-task')
+    .forEach(btn => btn.addEventListener('click', () => openTodoModal(btn.dataset.id)));
+
+  document.querySelectorAll('.del-task')
+    .forEach(btn => btn.addEventListener('click', () => {
+      saveTasks(getTasks().filter(t => t.id !== btn.dataset.id));
+      renderTaskGrid(filter);
+    }));
+}
+
 
 function setActiveFilter(btn) {
   document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('active-filter'));
@@ -497,7 +619,6 @@ function renderTaskList(filter = 'all') {
       <div class="habit-text">
         <span class="task-name ${nameDone}">${escapeHtml(task.name)}</span>
         ${due} ${timeTag}
-        <span class="priority ${task.priority?.toLowerCase()}">${task.priority}</span>
       </div>
       <div class="habit-actions">
         <button class="icon-btn edit-task" data-id="${task.id}">Edit</button>
@@ -520,6 +641,7 @@ cb.addEventListener('change', e => {
 
   saveTasks(tasks);
   renderTaskList(filter);
+  renderMatrixTasks();
   updateDashboardStats();     // ← updates focus hours
   renderDashboardCharts();    // ← updates weekly chart
 });
@@ -537,14 +659,17 @@ cb.addEventListener('change', e => {
 
 function openTodoModal(editId = null) {
   todoModal.classList.remove('hidden');
-  document.getElementById('todoModalTitle').textContent = editId ? 'Edit Task' : 'Add Task';
 
   const name = document.getElementById('taskName');
   const due = document.getElementById('taskDueDate');
-  const pri = document.getElementById('taskPriority');
   const time = document.getElementById('taskTime');
+  const type = document.getElementById('taskMatrixType');
 
-  name.value = ''; due.value = ''; pri.value = 'Medium'; time.value = '';
+  name.value = '';
+  due.value = '';
+  time.value = '';
+  type.value = 'q1';
+
   delete saveTaskBtn.dataset.editId;
 
   if (editId) {
@@ -552,26 +677,87 @@ function openTodoModal(editId = null) {
     if (t) {
       name.value = t.name;
       due.value = t.dueDate || '';
-      pri.value = t.priority || 'Medium';
-      time.value = t.focusTime || '';
+      time.value = t.focusTime || 0;
+      type.value = t.matrixType || 'q1';
+
       saveTaskBtn.dataset.editId = editId;
     }
   }
 }
 
-// ================= REMINDERS PAGE =================
-function renderRemindersPage() {
-  mainContent.innerHTML = `
-    <div class="reminder-card">
-      <div class="card-header">
-        <h3>Reminders</h3>
-        <button id="addReminderBtn" class="icon-btn">＋</button>
-      </div>
-      <ul id="reminderList" class="habit-list"></ul>
-    </div>
-  `;
-  document.getElementById('addReminderBtn').addEventListener('click', () => openReminderModal());
-  renderReminderList();
+
+function renderMatrixTasks() {
+  const tasks = getTasks();
+
+  const groups = { q1: [], q2: [], q3: [], q4: [] };
+
+  tasks.forEach(t => {
+    const type = t.matrixType || "q1";
+    if (!groups[type]) groups[type] = [];
+    groups[type].push(t);
+  });
+
+  ["q1","q2","q3","q4"].forEach(q => {
+    const container = document.getElementById(`${q}-list`);
+    const list = groups[q];
+
+    container.innerHTML = list.length ? "" : "<p class='empty-matrix'>No tasks</p>";
+    
+    list.forEach(t => {
+      const html = document.createElement('div');
+      html.className = `matrix-task ${t.completed ? "done" : ""}`;
+      html.innerHTML = `
+        <div class="matrix-task-top">
+          <input type="checkbox" data-id="${t.id}" ${t.completed ? "checked" : ""}>
+          <span class="task-name">${t.name}</span>
+        </div>
+
+        <div class="matrix-meta">
+          ${t.dueDate ? `<span>📅 ${t.dueDate}</span>` : ""}
+          ${t.focusTime ? `<span>⏱ ${t.focusTime} min</span>` : ""}
+        </div>
+
+
+        <div class="matrix-actions">
+          <button class="edit-task" data-id="${t.id}">Edit</button>
+          <button class="del-task" data-id="${t.id}">Delete</button>
+        </div>
+      `;
+
+      container.appendChild(html);
+    });
+  });
+
+  // CHECKBOX
+  document.querySelectorAll('.matrix-task input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', e => {
+      const id = e.target.dataset.id;
+      const tasks = getTasks();
+      const t = tasks.find(x => x.id === id);
+      if (!t) return;
+
+      t.completed = e.target.checked;
+      t.completedDate = todayKey();
+      saveTasks(tasks);
+
+      renderMatrixTasks();
+      updateDashboardStats();
+      renderDashboardCharts();
+    });
+  });
+
+  // EDIT
+  document.querySelectorAll('.edit-task').forEach(btn => {
+    btn.addEventListener('click', () => openTodoModal(btn.dataset.id));
+  });
+
+  // DELETE
+  document.querySelectorAll('.del-task').forEach(btn => {
+    btn.addEventListener('click', () => {
+      saveTasks(getTasks().filter(t => t.id !== btn.dataset.id));
+      renderMatrixTasks();
+    });
+  });
 }
 
 function renderReminderList() {
@@ -608,6 +794,7 @@ function renderReminderList() {
       updateDashboardStats();
     });
   });
+  
 }
 
 function openReminderModal(editId = null) {

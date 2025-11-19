@@ -582,3 +582,502 @@ canvas {
 
 .reminder-info p { margin: 3px 0; }
 .reminder-time { font-size: 13px; color: #A6ADBA; }
+
+/* ========== FULL PAGE TODO ========== */
+.todo-page {
+  margin-left: 250px;
+  margin-top: 120px;
+  padding: 20px;
+  color: #E6E8EC;
+}
+
+.todo-title {
+  font-size: 34px;
+  font-weight: 700;
+  color: #05c26a;
+  margin: 0 0 10px;
+}
+
+.todo-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 20px;
+}
+
+.todo-search {
+  flex: 1;
+  padding: 12px 14px;
+  background: #2a303c;
+  color: #fff;
+  border-radius: 10px;
+  border: none;
+  font-size: 15px;
+}
+
+.todo-filters {
+  display: flex;
+  gap: 10px;
+}
+
+.todo-filter {
+  background: #2a303c;
+  color: #A6ADBA;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.todo-filter.active {
+  background: #05c26a;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* GRID */
+.task-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.task-card {
+  background: #3a4150;
+  padding: 18px;
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  transition: 0.2s ease;
+}
+.task-card:hover {
+  transform: translateY(-3px);
+}
+
+.task-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.task-name {
+  margin: 0;
+  font-size: 18px;
+  color: #fff;
+}
+
+.task-details {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.task-info {
+  background: #2a303c;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.task-done .task-name {
+  text-decoration: line-through;
+  color: #05c26a;
+}
+
+/* BUTTONS */
+.task-actions-grid {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.task-btn {
+  background: #2a303c;
+  color: #A6ADBA;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.task-btn:hover {
+  background: #404756;
+}
+
+/* Floating add button */
+.floating-add-btn {
+  position: fixed;
+  bottom: 40px;
+  right: 40px;
+  width: 60px;
+  height: 60px;
+  background: #05c26a;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 32px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+}
+/* ===== PRO TASK CARD ===== */
+.task-card {
+  background: rgba(58, 65, 80, 0.7);
+  backdrop-filter: blur(6px);
+  padding: 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.task-card:hover {
+  transform: translateY(-5px) scale(1.01);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.45);
+}
+
+/* Colored left priority bar */
+.task-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  border-radius: 6px 0 0 6px;
+  background: var(--priority-color);
+}
+
+/* Set priority colors dynamically */
+.task-card[data-priority="Low"]::before { background: #05c26a; }
+.task-card[data-priority="Medium"]::before { background: #ffca28; }
+.task-card[data-priority="High"]::before { background: #ff5252; }
+
+.task-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Animated checkbox */
+.task-check {
+  width: 20px;
+  height: 20px;
+  accent-color: #05c26a;
+  transform: scale(1.2);
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.task-check:active {
+  transform: scale(1.4);
+}
+
+/* Title */
+.task-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #E6E8EC;
+  letter-spacing: 0.3px;
+  margin: 0;
+}
+
+.task-done .task-name {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* Details row */
+.task-details {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.task-info {
+  background: rgba(255,255,255,0.05);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #A6ADBA;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Icons in labels */
+.task-info::before {
+  font-size: 15px;
+  opacity: 0.9;
+}
+
+.task-info:nth-child(1)::before { content: "📅"; }
+.task-info:nth-child(2)::before { content: "⚡"; }
+.task-info:nth-child(3)::before { content: "⏱"; }
+
+/* Bottom buttons */
+.task-actions-grid {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.task-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #A6ADBA;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.task-btn:hover {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+/* Advanced: glowing border when task is completed */
+.task-done {
+  border: 1px solid rgba(5, 194, 106, 0.4) !important;
+  box-shadow: 0 0 10px rgba(5, 194, 106, 0.2);
+  opacity: 0.85;
+}
+/* MATRIX PAGE */
+.matrix-page {
+  margin-left: 260px;
+  margin-top: 110px;
+  padding: 20px;
+  color: #E6E8EC;
+}
+
+.matrix-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.matrix-header h1 {
+  font-size: 34px;
+  color: #05c26a;
+  margin: 0;
+}
+
+.matrix-add-btn {
+  background: #05c26a;
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  font-size: 17px;
+  cursor: pointer;
+}
+.matrix-add-btn:hover {
+  background: #049f56;
+}
+
+/* GRID */
+.matrix-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 22px;
+}
+
+.matrix-box {
+  background: #3a4150;
+  padding: 22px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.matrix-box h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #fff;
+}
+
+.q-desc {
+  color: #A6ADBA;
+  margin: 2px 0 16px;
+  font-size: 14px;
+}
+
+/* TASK CARD INSIDE MATRIX */
+.matrix-task {
+  background: #2a303c;
+  padding: 14px 16px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255,255,255,0.05);
+  transition: 0.2s ease;
+}
+
+.matrix-task:hover {
+  transform: translateY(-3px);
+  background: #343b49;
+}
+
+.matrix-task-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.matrix-task input[type="checkbox"] {
+  transform: scale(1.2);
+  accent-color: #05c26a;
+}
+
+.matrix-task .task-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.matrix-task.done .task-name {
+  text-decoration: line-through;
+  color: #05c26a;
+  opacity: 0.6;
+}
+
+.matrix-meta {
+  margin-top: 10px;
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+  color: #A6ADBA;
+}
+
+.matrix-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.matrix-actions button {
+  background: #404756;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #E6E8EC;
+  font-size: 13px;
+}
+.matrix-actions button:hover {
+  background: #4f5564;
+}
+
+.empty-matrix {
+  color: #7f8796;
+  font-size: 14px;
+  margin-top: 10px;
+}
+.modal-card {
+  max-width: 420px;
+  width: 95%;
+}
+
+
+   .modal-card {
+    background: #3a4150;
+    width: 90%;
+    max-width: 480px;
+    padding: 24px 26px;
+    border-radius: 20px;
+    color: #E6E8EC;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+  }
+  
+  /* Proper spacing for labels and inputs */
+  .modal-card .form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 18px;
+  }
+  
+  .modal-card input,
+  .modal-card select {
+    background: #2a303c;
+    border: 1px solid #21262f;
+    color: #E6E8EC;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 15px;
+    width: 100%;
+    outline: none;
+  }
+  
+  .modal-card input::placeholder {
+    color: #777;
+  }
+  
+  .modal-card select {
+    appearance: none;
+    cursor: pointer;
+  }
+  
+  /* Buttons */
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 10px;
+  }
+  
+  .btn {
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 15px;
+  }
+  
+  .btn.ghost {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #A6ADBA;
+  }
+  /* ================================
+   FIX INPUT + SELECT SYMMETRY
+   ================================ */
+.modal-card input,
+.modal-card select {
+  width: 100%;
+  background: #2a303c !important;
+  border: 1px solid #222831 !important;
+  color: #E6E8EC !important;
+  padding: 12px 14px !important;
+  border-radius: 12px !important;
+  font-size: 15px !important;
+  box-sizing: border-box !important;
+  height: 48px !important;
+}
+
+/* Fix select arrow issues */
+.modal-card select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='white' height='16' width='16' xmlns='http://www.w3.org/2000/svg'><path d='M4 6l4 4 4-4z'/></svg>") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 12px center !important;
+  padding-right: 40px !important;
+}
+
+/* Proper spacing between fields */
+.modal-card .form-row {
+  margin-bottom: 20px !important;
+}
+
+/* Fix modal inside padding */
+.modal-card {
+  padding: 28px 30px !important;
+  border-radius: 20px !important;
+}

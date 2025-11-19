@@ -92,32 +92,39 @@
   <div id="todoModal" class="modal hidden">
     <div class="modal-card">
       <h2 id="todoModalTitle">Add Task</h2>
+  
       <label class="form-row">
         <span>Task Name</span>
         <input id="taskName" type="text" placeholder="e.g. Complete assignment">
       </label>
+  
       <label class="form-row">
         <span>Due Date</span>
         <input id="taskDueDate" type="date">
       </label>
-      <label class="form-row">
-        <span>Priority</span>
-        <select id="taskPriority">
-          <option value="Low">Low</option>
-          <option value="Medium" selected>Medium</option>
-          <option value="High">High</option>
-        </select>
-      </label>
+  
       <label class="form-row">
         <span>Focus Time (minutes)</span>
         <input id="taskTime" type="number" min="0" placeholder="e.g. 45">
       </label>
+  
+      <label class="form-row">
+        <span>Category</span>
+        <select id="taskMatrixType">
+          <option value="q1">Urgent + Important</option>
+          <option value="q2">Not Urgent + Important</option>
+          <option value="q3">Urgent + Not Important</option>
+          <option value="q4">Not Urgent + Not Important</option>
+        </select>
+      </label>
+  
       <div class="modal-actions">
         <button id="cancelTask" class="btn ghost">Cancel</button>
         <button id="saveTask" class="btn">Save</button>
       </div>
     </div>
   </div>
+  
 
   <!-- Habit Modal -->
 <div id="habitModal" class="modal hidden">
