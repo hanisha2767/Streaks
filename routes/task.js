@@ -4,13 +4,14 @@ const auth = require("../middleware/authMiddleware");
 const router = express.Router();
 
 // ADD TASK
-router.post("/add", auth, async (req, res) => {
+router.post("/add", authMiddleware, async (req, res) => {
     try {
-        const { title, dueDate, priority, focusTime } = req.body;
+        const { title, description, dueDate, priority, focusTime } = req.body;
 
         const task = new Task({
             userId: req.user.id,
             title,
+            description,
             dueDate,
             priority,
             focusTime
@@ -19,10 +20,10 @@ router.post("/add", auth, async (req, res) => {
         await task.save();
         res.json({ msg: "Task added", task });
     } catch (err) {
-        console.log(err);
         res.status(500).json({ msg: "Server error" });
     }
 });
+
 
 // GET USER TASKS
 router.get("/list", auth, async (req, res) => {
