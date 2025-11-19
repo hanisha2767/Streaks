@@ -886,17 +886,37 @@ canvas {
 /* GRID */
 .matrix-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 22px;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 20px;
+  height: 70vh;       
 }
+
 
 .matrix-box {
   background: #3a4150;
-  padding: 22px;
   border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.06);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  padding: 8px 12px;
 }
+
+.matrix-list {
+  margin-top: 12px;
+  flex: 1;             /* fills available space in the box */
+  overflow-y: auto;    /* scroll INSIDE the quadrant */
+  padding-right: 4px;  /* makes scrollbar clean */
+}
+.matrix-list::-webkit-scrollbar {
+  width: 6px;
+}
+.matrix-list::-webkit-scrollbar-track {
+  background: #2a303c;
+  border-radius: 10px;
+}
+.matrix-list::-webkit-scrollbar-thumb {
+  background: #05c26a;
+  border-radius: 10px;
+}
+
 
 .matrix-box h2 {
   margin: 0;
@@ -911,24 +931,104 @@ canvas {
 }
 
 /* TASK CARD INSIDE MATRIX */
+/* ============================================
+   FINAL CLEAN + COMPACT TASK LAYOUT (WORKING)
+   ============================================ */
+
+/* TASK CONTAINER */
 .matrix-task {
-  background: #2a303c;
-  padding: 14px 16px;
-  border-radius: 12px;
-  margin-bottom: 12px;
-  border: 1px solid rgba(255,255,255,0.05);
-  transition: 0.2s ease;
+  display: block;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin: 0;
+  color: #E6E8EC;
+  width: 100%;
 }
 
-.matrix-task:hover {
-  transform: translateY(-3px);
-  background: #343b49;
-}
-
+/* ---------- ROW 1: checkbox + task name ---------- */
 .matrix-task-top {
   display: flex;
   align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.matrix-task input[type="checkbox"] {
+  transform: scale(1.2);
+  accent-color: #05c26a;
+  cursor: pointer;
+}
+
+.matrix-task .task-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* ---------- ROW 2: date + focus time ---------- */
+.matrix-meta {
+  display: flex;
   gap: 10px;
+  font-size: 12px;
+  color: #A6ADBA;
+  margin-left: 32px;
+  margin-top: 1px;
+}
+
+/* ---------- ROW 3: Edit + Delete ---------- */
+.matrix-actions {
+  display: flex;
+  gap: 14px;
+  margin-left: 32px;
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.matrix-actions button {
+  background: none;
+  border: none;
+  color: #A6ADBA;
+  cursor: pointer;
+}
+
+.matrix-actions button:hover {
+  color: #fff;
+}
+
+/* ---------- Quadrant hover when dragging ---------- */
+.matrix-box.drag-hover {
+  background: #464d5c;
+  border: 1px dashed #05c26a;
+}
+
+/* Quadrant padding */
+.matrix-box {
+  background: #3a4150;
+  border-radius: 16px;
+  padding: 10px 14px;
+}
+
+.matrix-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+/* TASK CONTAINER */
+.matrix-task {
+  display: block;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  margin: 0;
+  color: #E6E8EC;
+  width: 100%;
+}
+
+/* ---------- ROW 1: checkbox + task name ---------- */
+.matrix-task-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
 }
 
 .matrix-task input[type="checkbox"] {
@@ -936,53 +1036,39 @@ canvas {
   accent-color: #05c26a;
 }
 
-.matrix-task .task-name {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.matrix-task.done .task-name {
-  text-decoration: line-through;
-  color: #05c26a;
-  opacity: 0.6;
-}
-
+/* ---------- ROW 2: date + time + actions ---------- */
 .matrix-meta {
-  margin-top: 10px;
   display: flex;
-  gap: 12px;
-  font-size: 13px;
+  align-items: center;
+  justify-content: space-between; /* ⬅️ pushes Edit/Delete to same row */
+  margin-left: 32px;
+  margin-right: 10px;
+  margin-top: 2px;
+}
+
+.matrix-meta-left {
+  display: flex;
+  gap: 22px;   /* increased spacing between date & time */
+  font-size: 12px;
   color: #A6ADBA;
 }
 
-.matrix-actions {
-  margin-top: 12px;
+
+.matrix-meta-right {
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+  gap: 14px;
 }
 
-.matrix-actions button {
-  background: #404756;
+.matrix-meta-right button {
+  background: none;
   border: none;
-  padding: 6px 10px;
-  border-radius: 6px;
+  color: #A6ADBA;
+  font-size: 12px;
   cursor: pointer;
-  color: #E6E8EC;
-  font-size: 13px;
-}
-.matrix-actions button:hover {
-  background: #4f5564;
 }
 
-.empty-matrix {
-  color: #7f8796;
-  font-size: 14px;
-  margin-top: 10px;
-}
-.modal-card {
-  max-width: 420px;
-  width: 95%;
+.matrix-meta-right button:hover {
+  color: #fff;
 }
 
 
@@ -1080,4 +1166,9 @@ canvas {
 .modal-card {
   padding: 28px 30px !important;
   border-radius: 20px !important;
+}
+.matrix-task.done .task-name {
+  text-decoration: line-through;
+  color: #05c26a;
+  opacity: 0.65;
 }

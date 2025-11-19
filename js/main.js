@@ -690,75 +690,139 @@ function renderMatrixTasks() {
   const tasks = getTasks();
 
   const groups = { q1: [], q2: [], q3: [], q4: [] };
-
   tasks.forEach(t => {
     const type = t.matrixType || "q1";
-    if (!groups[type]) groups[type] = [];
     groups[type].push(t);
   });
 
-  ["q1","q2","q3","q4"].forEach(q => {
-    const container = document.getElementById(`${q}-list`);
-    const list = groups[q];
+  const quadrants = {
+    q1: document.getElementById("q1-list"),
+    q2: document.getElementById("q2-list"),
+    q3: document.getElementById("q3-list"),
+    q4: document.getElementById("q4-list")
+  };
 
-    container.innerHTML = list.length ? "" : "<p class='empty-matrix'>No tasks</p>";
-    
-    list.forEach(t => {
-      const html = document.createElement('div');
-      html.className = `matrix-task ${t.completed ? "done" : ""}`;
-      html.innerHTML = `
+  Object.values(quadrants).forEach(q => q.innerHTML = "");
+
+  // Render tasks
+  Object.keys(groups).forEach(q => {
+    const list = quadrants[q];
+
+    if (!groups[q].length) {
+      list.innerHTML = "<p class='empty-matrix'>No tasks</p>";
+      return;
+    }
+
+    groups[q].forEach(t => {
+      const div = document.createElement("div");
+      div.className = `matrix-task ${t.completed ? "done" : ""}`;      
+      div.dataset.id = t.id;
+      div.draggable = true;
+
+      // ✔ Format date → "21 Nov"
+      let dateFormatted = "";
+      if (t.dueDate) {
+        const d = new Date(t.dueDate);
+        dateFormatted = d.toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short"
+        });
+      }
+
+      div.innerHTML = `
         <div class="matrix-task-top">
           <input type="checkbox" data-id="${t.id}" ${t.completed ? "checked" : ""}>
           <span class="task-name">${t.name}</span>
         </div>
 
         <div class="matrix-meta">
-          ${t.dueDate ? `<span>📅 ${t.dueDate}</span>` : ""}
-          ${t.focusTime ? `<span>⏱ ${t.focusTime} min</span>` : ""}
-        </div>
+          <div class="matrix-meta-left">
+            ${t.dueDate ? `<span>🗓 ${dateFormatted}</span>` : ""}
+            ${t.focusTime ? `<span>⏱ ${t.focusTime} min</span>` : ""}
+          </div>
 
-
-        <div class="matrix-actions">
-          <button class="edit-task" data-id="${t.id}">Edit</button>
-          <button class="del-task" data-id="${t.id}">Delete</button>
+          <div class="matrix-meta-right">
+            <button class="edit-task" data-id="${t.id}">Edit</button>
+            <button class="del-task" data-id="${t.id}">Delete</button>
+          </div>
         </div>
       `;
 
-      container.appendChild(html);
+      /* --- DRAG START --- */
+      div.addEventListener("dragstart", e => {
+        e.dataTransfer.setData("taskId", t.id);
+      });
+
+      list.appendChild(div);
     });
   });
 
-  // CHECKBOX
+  // --- Drop handlers ---
+  ["q1", "q2", "q3", "q4"].forEach(q => {
+    const box = document.querySelector(`.matrix-box[data-type="${q}"]`);
+
+    box.addEventListener("dragover", e => {
+      e.preventDefault();
+      box.classList.add("drag-hover");
+    });
+
+    box.addEventListener("dragleave", () => {
+      box.classList.remove("drag-hover");
+    });
+
+    box.addEventListener("drop", e => {
+      box.classList.remove("drag-hover");
+      const id = e.dataTransfer.getData("taskId");
+
+      const tasks = getTasks();
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+
+      task.matrixType = q;
+      saveTasks(tasks);
+      renderMatrixTasks();
+    });
+  });
+
+  // Checkbox toggle
   document.querySelectorAll('.matrix-task input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener('change', e => {
+    cb.addEventListener("change", e => {
       const id = e.target.dataset.id;
       const tasks = getTasks();
       const t = tasks.find(x => x.id === id);
       if (!t) return;
-
+  
       t.completed = e.target.checked;
       t.completedDate = todayKey();
       saveTasks(tasks);
-
+  
+      // immediate UI feedback: toggle done class on the task row
+      const row = e.target.closest('.matrix-task');
+      if (row) row.classList.toggle('done', e.target.checked);
+  
+      // optional: re-render if you need sorting/stats
       renderMatrixTasks();
       updateDashboardStats();
       renderDashboardCharts();
     });
   });
+  
 
-  // EDIT
+  // Edit
   document.querySelectorAll('.edit-task').forEach(btn => {
-    btn.addEventListener('click', () => openTodoModal(btn.dataset.id));
+    btn.addEventListener("click", () => openTodoModal(btn.dataset.id));
   });
 
-  // DELETE
+  // Delete
   document.querySelectorAll('.del-task').forEach(btn => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener("click", () => {
       saveTasks(getTasks().filter(t => t.id !== btn.dataset.id));
       renderMatrixTasks();
     });
   });
 }
+
+
 
 function renderReminderList() {
   const list = document.getElementById('reminderList');
