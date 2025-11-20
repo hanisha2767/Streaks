@@ -4,7 +4,7 @@ const auth = require("../middleware/authMiddleware");
 const router = express.Router();
 
 // ADD TASK
-router.post("/add", authMiddleware, async (req, res) => {
+router.post("/add", auth, async (req, res) => {
     try {
         const { title, description, dueDate, priority, focusTime } = req.body;
 
@@ -60,3 +60,4 @@ router.patch("/complete/:id", auth, async (req, res) => {
 });
 
 module.exports = router;
+
