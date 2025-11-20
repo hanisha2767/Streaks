@@ -15,6 +15,13 @@ function saveDailyProgress(k, v) { localStorage.setItem(`habitProgress_${k}`, JS
 
 function getTasks() { return JSON.parse(localStorage.getItem('tasks') || '[]'); }
 function saveTasks(t) { localStorage.setItem('tasks', JSON.stringify(t)); }
+function getArchive() { 
+  return JSON.parse(localStorage.getItem('archive') || '[]'); 
+}
+function saveArchive(a) { 
+  localStorage.setItem('archive', JSON.stringify(a)); 
+}
+
 
 function getReminders() { return JSON.parse(localStorage.getItem('reminders') || '[]'); }
 function saveReminders(r) { localStorage.setItem('reminders', JSON.stringify(r)); }
@@ -88,6 +95,7 @@ window.addEventListener('DOMContentLoaded', () => {
       } else if (section === 'habits') renderHabitsCard();
       else if (section === 'todo') renderTodoPage();
       else if (section === 'reminders') renderRemindersPage();
+      else if (section === 'archive') renderArchivePage();
     });
   });
 
@@ -237,6 +245,15 @@ function ensureTaskDates() {
   });
 
   if (updated) saveTasks(tasks);
+}
+
+function archiveTask(task) {
+  const archive = getArchive();
+  archive.push({
+    ...task,
+    archivedAt: todayKey()
+  });
+  saveArchive(archive);
 }
 
 
@@ -560,16 +577,31 @@ function renderTaskGrid(filter = 'all') {
 
   // checkbox handler
   document.querySelectorAll('.task-check').forEach(cb => {
-    cb.addEventListener('change', (e) => {
+    cb.addEventListener("change", e => {
       const id = e.target.dataset.id;
-      const tasks = getTasks();
+      let tasks = getTasks();
       const t = tasks.find(x => x.id === id);
       if (!t) return;
-
-      t.completed = e.target.checked;
-      t.completedDate = todayKey();
-      saveTasks(tasks);
-      renderTaskGrid(filter);
+  
+      if (e.target.checked) {
+        // get checkbox screen coords
+        const rect = e.target.getBoundingClientRect();
+        tinyConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      
+        t.completed = true;
+        t.completedDate = todayKey();
+      
+        archiveTask(t);
+        tasks = tasks.filter(x => x.id !== id);
+        saveTasks(tasks);
+      }
+       else {
+        // rare case: someone unchecks from archive restore view  
+        t.completed = false;
+        saveTasks(tasks);
+      }
+  
+      // update UI
       renderMatrixTasks();
       updateDashboardStats();
       renderDashboardCharts();
@@ -630,20 +662,33 @@ function renderTaskList(filter = 'all') {
 
   list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
     // In renderTaskList() → checkbox change
-cb.addEventListener('change', e => {
-  const id = e.target.dataset.id;
-  const tasks = getTasks();
-  const task = tasks.find(t => t.id === id);
-  if (!task) return;
-
-  task.completed = e.target.checked;
-  task.completedDate = task.dueDate || todayKey();
-
-  saveTasks(tasks);
-  renderTaskList(filter);
-  renderMatrixTasks();
-  updateDashboardStats();     // ← updates focus hours
-  renderDashboardCharts();    // ← updates weekly chart
+    cb.addEventListener("change", e => {
+      const id = e.target.dataset.id;
+      let tasks = getTasks();
+      const t = tasks.find(x => x.id === id);
+      if (!t) return;
+  
+      if (e.target.checked) {
+        // mark completed
+        t.completed = true;
+        t.completedDate = todayKey();
+  
+        // move to archive
+        archiveTask(t);
+  
+        // remove from active list
+        tasks = tasks.filter(x => x.id !== id);
+        saveTasks(tasks);
+      } else {
+        // rare case: someone unchecks from archive restore view  
+        t.completed = false;
+        saveTasks(tasks);
+      }
+  
+      // update UI
+      renderMatrixTasks();
+      updateDashboardStats();
+      renderDashboardCharts();
 });
   });
 
@@ -785,28 +830,57 @@ function renderMatrixTasks() {
   });
 
   // Checkbox toggle
-  document.querySelectorAll('.matrix-task input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener("change", e => {
-      const id = e.target.dataset.id;
-      const tasks = getTasks();
-      const t = tasks.find(x => x.id === id);
-      if (!t) return;
-  
-      t.completed = e.target.checked;
-      t.completedDate = todayKey();
+  // Checkbox toggle (ARCHIVE READY)
+document.querySelectorAll('.matrix-task input[type="checkbox"]').forEach(cb => {
+  cb.addEventListener("change", e => {
+    const id = e.target.dataset.id;
+    let tasks = getTasks();
+    const t = tasks.find(x => x.id === id);
+    if (!t) return;
+
+    if (e.target.checked) {
+
+      const row = e.target.closest(".matrix-task");
+      const nameEl = row.querySelector(".task-name");
+    
+      // ADD STRIKE CLASSES
+      nameEl.classList.add("task-strike");
+      nameEl.classList.add("striked");
+    
+      // Wait for strike animation (250ms)
+      setTimeout(() => {
+        row.classList.add("fade-out-task");
+    
+        // Wait for fade-out (250ms)
+        setTimeout(() => {
+          t.completed = true;
+          t.completedDate = todayKey();
+          archiveTask(t);
+          tasks = tasks.filter(x => x.id !== id);
+          saveTasks(tasks);
+    
+          renderMatrixTasks();
+          updateDashboardStats();
+          renderDashboardCharts();
+    
+        }, 250);
+    
+      }, 250);
+    }    
+
+     else {
+      // rare case: someone unchecks from archive restore view  
+      t.completed = false;
       saveTasks(tasks);
-  
-      // immediate UI feedback: toggle done class on the task row
-      const row = e.target.closest('.matrix-task');
-      if (row) row.classList.toggle('done', e.target.checked);
-  
-      // optional: re-render if you need sorting/stats
-      renderMatrixTasks();
-      updateDashboardStats();
-      renderDashboardCharts();
-    });
+    }
+
+    // update UI
+    renderMatrixTasks();
+    updateDashboardStats();
+    renderDashboardCharts();
   });
-  
+});
+
 
   // Edit
   document.querySelectorAll('.edit-task').forEach(btn => {
@@ -860,6 +934,102 @@ function renderReminderList() {
   });
   
 }
+function renderArchivePage() {
+  mainContent.innerHTML = `
+    <div class="archive-page">
+      <h1>Archived Tasks</h1>
+      <div id="archiveList" class="archive-list"></div>
+    </div>
+  `;
+
+  renderArchiveList();
+}
+function renderArchiveList() {
+  const list = document.getElementById("archiveList");
+  const archive = getArchive();
+
+  if (!list) return;
+
+  if (archive.length === 0) {
+    list.innerHTML = `<p class="empty-archive">No archived tasks.</p>`;
+    return;
+  }
+
+  list.innerHTML = archive.map(t => `
+    <div class="archive-item" data-id="${t.id}">
+      <div class="archive-info">
+        <h3>${t.name}</h3>
+        ${t.dueDate ? `<p>📅 ${t.dueDate}</p>` : ""}
+        ${t.focusTime ? `<p>⏱ ${t.focusTime} min</p>` : ""}
+        <p class="archived-on">Archived: ${t.archivedAt}</p>
+      </div>
+
+      <div class="archive-actions">
+        <button class="archive-btn restore-btn" data-id="${t.id}">Restore</button>
+        <button class="archive-btn delete-btn" data-id="${t.id}">Delete</button>
+      </div>
+    </div>
+  `).join("");
+
+  // DELETE handler
+  document.querySelectorAll(".delete-btn").forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.dataset.id;
+      const item = btn.closest(".archive-item");
+  
+      // add animation class
+      item.classList.add("disappear");
+  
+      // after animation ends → remove & refresh
+      setTimeout(() => {
+        saveArchive(archive.filter(t => t.id !== id));
+        renderArchiveList();
+      }, 350);
+    };
+  });
+  
+
+  // RESTORE handler
+  document.querySelectorAll(".restore-btn").forEach(btn => {
+  btn.onclick = () => {
+    const id = btn.dataset.id;
+    const item = btn.closest(".archive-item");
+    const task = archive.find(x => x.id === id);
+
+    // apply animation
+    item.classList.add("disappear");
+
+    setTimeout(() => {
+      // remove from archive
+      saveArchive(archive.filter(x => x.id !== id));
+
+      // restore to tasks
+      const tasks = getTasks();
+      task.completed = false;
+      delete task.completedDate;
+      tasks.push(task);
+      saveTasks(tasks);
+
+      renderArchiveList();
+      renderMatrixTasks();
+    }, 350);
+  };
+});
+}
+
+function cleanArchive() {
+  const archive = getArchive();
+  const now = new Date(todayKey());
+
+  const filtered = archive.filter(t => {
+    const archived = new Date(t.archivedAt);
+    return (now - archived) / 86400000 < 7;
+  });
+
+  saveArchive(filtered);
+}
+cleanArchive();
+
 
 function openReminderModal(editId = null) {
   const modal = document.getElementById('reminderModal');
@@ -979,3 +1149,22 @@ if (logoutBtn) {
   });
 }
 
+function tinyConfetti(x, y) {
+  for (let i = 0; i < 12; i++) {
+    const p = document.createElement("div");
+    p.className = "tiny-confetti";
+
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 3;
+
+    p.style.setProperty("--dx", Math.cos(angle) * speed + "px");
+    p.style.setProperty("--dy", Math.sin(angle) * speed + "px");
+
+    p.style.left = x + "px";
+    p.style.top = y + "px";
+
+    document.body.appendChild(p);
+
+    setTimeout(() => p.remove(), 600);
+  }
+}

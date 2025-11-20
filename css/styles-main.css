@@ -1172,3 +1172,90 @@ canvas {
   color: #05c26a;
   opacity: 0.65;
 }
+/* ============================
+   ARCHIVE PAGE (MATCHED TO UI)
+   ============================ */
+
+   .archive-page {
+    margin-left: 260px;
+    margin-top: 120px;
+    padding: 20px;
+    color: #E6E8EC;
+  }
+  
+  /* Archive item card */
+  .archive-item {
+    background: #3a4150;
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-bottom: 18px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid rgba(255,255,255,0.05);
+    transition: 0.25s ease;
+  }
+  
+  .archive-item:hover {
+    transform: translateY(-4px);
+    background: #454d5e;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  }
+  
+  /* Left side */
+  .archive-info h3 {
+    margin: 0;
+    font-size: 20px;
+    color: #fff;
+  }
+  
+  .archive-info p {
+    margin: 4px 0;
+    color: #A6ADBA;
+    font-size: 14px;
+  }
+  
+  /* Right side actions */
+  .archive-actions {
+    display: flex;
+    gap: 10px;
+  }
+  
+  /* Generic button styling */
+  .archive-btn {
+    border: none;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: 0.2s ease;
+    font-weight: 600;
+  }
+  
+  /* Restore Button */
+  .restore-btn {
+    background: #05c26a;
+    color: #fff;
+  }
+  .restore-btn:hover {
+    background: #049c58;
+  }
+  
+  /* Delete Button */
+  .delete-btn {
+    background: #ff3b3b;
+    color: #fff;
+  }
+  .delete-btn:hover {
+    background: #e22f2f;
+  }
+  
+  /* Empty message */
+  .empty-archive {
+    padding: 20px;
+    color: #A6ADBA;
+    font-size: 16px;
+    opacity: 0.7;
+  }
+  
