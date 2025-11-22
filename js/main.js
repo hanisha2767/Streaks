@@ -912,6 +912,24 @@ document.querySelectorAll('.matrix-task input[type="checkbox"]').forEach(cb => {
   });
 }
 
+function renderRemindersPage() {
+  mainContent.innerHTML = `
+    <div class="reminders-page">
+      <div class="reminders-header">
+        <h1>Reminders</h1>
+        <button id="newReminderBtn" class="matrix-add-btn">＋ New Reminder</button>
+      </div>
+
+      <ul id="reminderList" class="reminder-list"></ul>
+    </div>
+  `;
+
+  document.getElementById("newReminderBtn").addEventListener("click", () => {
+    openReminderModal();
+  });
+
+  renderReminderList();
+}
 
 
 function renderReminderList() {
