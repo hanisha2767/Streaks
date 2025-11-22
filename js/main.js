@@ -181,6 +181,10 @@ window.addEventListener('DOMContentLoaded', () => {
         
       const name = document.getElementById('taskName').value.trim();
       const due = document.getElementById('taskDueDate').value;
+      // prevent past date on save
+      if (due && due < todayKey()) {
+        return alert("You cannot select a past date.");
+      }
       const time = Number(document.getElementById('taskTime').value) || 0;
       const matrixType = document.getElementById('taskMatrixType').value;
   
@@ -592,7 +596,6 @@ function renderTaskGrid(filter = 'all') {
         t.completedDate = todayKey();
       
         archiveTask(t);
-        tasks = tasks.filter(x => x.id !== id);
         saveTasks(tasks);
       }
        else {
@@ -707,6 +710,9 @@ function openTodoModal(editId = null) {
 
   const name = document.getElementById('taskName');
   const due = document.getElementById('taskDueDate');
+  // block past dates
+  const today = new Date().toISOString().split("T")[0];
+  due.min = today;
   const time = document.getElementById('taskTime');
   const type = document.getElementById('taskMatrixType');
 
@@ -782,7 +788,12 @@ function renderMatrixTasks() {
 
         <div class="matrix-meta">
           <div class="matrix-meta-left">
-            ${t.dueDate ? `<span>🗓 ${dateFormatted}</span>` : ""}
+          ${t.dueDate ? `
+            <span class="${(!t.completed && t.dueDate < todayKey()) ? 'expired-date' : ''}">
+              🗓 ${dateFormatted}
+            </span>
+          ` : ""}
+          
             ${t.focusTime ? `<span>⏱ ${t.focusTime} min</span>` : ""}
           </div>
 
@@ -831,6 +842,9 @@ function renderMatrixTasks() {
 
   // Checkbox toggle
   // Checkbox toggle (ARCHIVE READY)
+// Checkbox toggle — DO NOT ARCHIVE ANYMORE
+// Checkbox toggle — strike → fade → hide BUT not archive
+// Checkbox toggle — strike → fade → archive
 document.querySelectorAll('.matrix-task input[type="checkbox"]').forEach(cb => {
   cb.addEventListener("change", e => {
     const id = e.target.dataset.id;
@@ -838,48 +852,50 @@ document.querySelectorAll('.matrix-task input[type="checkbox"]').forEach(cb => {
     const t = tasks.find(x => x.id === id);
     if (!t) return;
 
+    const row = e.target.closest(".matrix-task");
+    const nameEl = row.querySelector(".task-name");
+
     if (e.target.checked) {
 
-      const row = e.target.closest(".matrix-task");
-      const nameEl = row.querySelector(".task-name");
-    
-      // ADD STRIKE CLASSES
+      // 1) STRIKE animation
       nameEl.classList.add("task-strike");
-      nameEl.classList.add("striked");
-    
-      // Wait for strike animation (250ms)
-      setTimeout(() => {
-        row.classList.add("fade-out-task");
-    
-        // Wait for fade-out (250ms)
-        setTimeout(() => {
-          t.completed = true;
-          t.completedDate = todayKey();
-          archiveTask(t);
-          tasks = tasks.filter(x => x.id !== id);
-          saveTasks(tasks);
-    
-          renderMatrixTasks();
-          updateDashboardStats();
-          renderDashboardCharts();
-    
-        }, 250);
-    
-      }, 250);
-    }    
+      setTimeout(() => nameEl.classList.add("striked"), 50);
 
-     else {
-      // rare case: someone unchecks from archive restore view  
+      // 2) FADE OUT
+      setTimeout(() => {
+        row.style.transition = "opacity 0.3s ease";
+        row.style.opacity = "0";
+      }, 250);
+
+      // 3) AFTER FADE → ARCHIVE
+      setTimeout(() => {
+        // mark completed
+        t.completed = true;
+        t.completedDate = todayKey();
+
+        // move to archive
+        archiveTask(t);
+
+        // remove from active list
+        const newList = tasks.filter(x => x.id !== id);
+        saveTasks(newList);
+
+        // re-render
+        renderMatrixTasks();
+        updateDashboardStats();
+        renderDashboardCharts();
+
+      }, 600);
+    } else {
+      // unchecking (rare)
       t.completed = false;
+      delete t.completedDate;
       saveTasks(tasks);
     }
 
-    // update UI
-    renderMatrixTasks();
-    updateDashboardStats();
-    renderDashboardCharts();
   });
 });
+
 
 
   // Edit
