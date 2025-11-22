@@ -188,7 +188,16 @@ window.addEventListener('DOMContentLoaded', () => {
       const time = Number(document.getElementById('taskTime').value) || 0;
       const matrixType = document.getElementById('taskMatrixType').value;
   
-      if (!name) return alert('Enter a task name');
+      if (!name.trim()) return alert("Task name is required.");
+
+      if (!due) return alert("Please select a due date."); 
+
+      if (new Date(due) < new Date().setHours(0,0,0,0)) {
+        return alert("You cannot choose a past date.");
+      }
+
+      if (!matrixType) return alert("Please select a matrix category.");
+
   
       const tasks = getTasks();
       const editId = saveTaskBtn.dataset.editId;
@@ -743,8 +752,13 @@ function renderMatrixTasks() {
   const groups = { q1: [], q2: [], q3: [], q4: [] };
   tasks.forEach(t => {
     const type = t.matrixType || "q1";
-    groups[type].push(t);
+  
+    // hide completed tasks from matrix
+    if (!t.completed) {
+      groups[type].push(t);
+    }
   });
+  
 
   const quadrants = {
     q1: document.getElementById("q1-list"),
@@ -847,9 +861,10 @@ function renderMatrixTasks() {
 // Checkbox toggle — strike → fade → archive
 document.querySelectorAll('.matrix-task input[type="checkbox"]').forEach(cb => {
   cb.addEventListener("change", e => {
+
     const id = e.target.dataset.id;
-    let tasks = getTasks();
-    const t = tasks.find(x => x.id === id);
+    let tasks = getTasks(); 
+    let t = tasks.find(x => x.id === id);
     if (!t) return;
 
     const row = e.target.closest(".matrix-task");
@@ -857,44 +872,48 @@ document.querySelectorAll('.matrix-task input[type="checkbox"]').forEach(cb => {
 
     if (e.target.checked) {
 
-      // 1) STRIKE animation
+      // strike animation
       nameEl.classList.add("task-strike");
-      setTimeout(() => nameEl.classList.add("striked"), 50);
+      setTimeout(() => nameEl.classList.add("striked"), 30);
 
-      // 2) FADE OUT
       setTimeout(() => {
-        row.style.transition = "opacity 0.3s ease";
+        row.style.transition = "opacity .3s ease";
         row.style.opacity = "0";
-      }, 250);
+      }, 200);
 
-      // 3) AFTER FADE → ARCHIVE
       setTimeout(() => {
-        // mark completed
+        
+        // mark as completed
         t.completed = true;
         t.completedDate = todayKey();
 
-        // move to archive
-        archiveTask(t);
+        // archive COPY — not the same reference
+        archiveTask({
+          ...t 
+        });
 
-        // remove from active list
-        const newList = tasks.filter(x => x.id !== id);
-        saveTasks(newList);
+        // IMPORTANT: keep the task inside tasks[] for dashboard
+        saveTasks(tasks);
 
-        // re-render
         renderMatrixTasks();
-        updateDashboardStats();
+        updateDashboardStats(); 
         renderDashboardCharts();
 
-      }, 600);
+      }, 500);
+
     } else {
-      // unchecking (rare)
+      // if unchecked
       t.completed = false;
       delete t.completedDate;
       saveTasks(tasks);
+      renderMatrixTasks();
+      updateDashboardStats();
+      renderDashboardCharts();
     }
 
   });
 });
+
 
 
 
@@ -1024,29 +1043,48 @@ function renderArchiveList() {
   
 
   // RESTORE handler
-  document.querySelectorAll(".restore-btn").forEach(btn => {
+// RESTORE handler
+document.querySelectorAll(".restore-btn").forEach(btn => {
   btn.onclick = () => {
     const id = btn.dataset.id;
     const item = btn.closest(".archive-item");
-    const task = archive.find(x => x.id === id);
 
-    // apply animation
+    // find the archived task
+    const archive = getArchive();
+    const task = archive.find(x => x.id === id);
+    if (!task) return;
+
+    // animation
     item.classList.add("disappear");
 
     setTimeout(() => {
       // remove from archive
       saveArchive(archive.filter(x => x.id !== id));
 
-      // restore to tasks
-      const tasks = getTasks();
-      task.completed = false;
-      delete task.completedDate;
-      tasks.push(task);
+      // restore in tasks list
+      let tasks = getTasks();
+      let existing = tasks.find(x => x.id === id);
+
+      if (existing) {
+        // the task already exists → update it
+        existing.completed = false;
+        delete existing.completedDate;
+      } else {
+        // if it isn't there → push a clean copy
+        tasks.push({
+          ...task,
+          completed: false
+        });
+      }
+
       saveTasks(tasks);
 
       renderArchiveList();
       renderMatrixTasks();
-    }, 350);
+      updateDashboardStats();
+      renderDashboardCharts();
+
+    }, 300);
   };
 });
 }
