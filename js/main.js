@@ -750,14 +750,41 @@ function renderMatrixTasks() {
   const tasks = getTasks();
 
   const groups = { q1: [], q2: [], q3: [], q4: [] };
-  tasks.forEach(t => {
-    const type = t.matrixType || "q1";
-  
-    // hide completed tasks from matrix
-    if (!t.completed) {
-      groups[type].push(t);
-    }
+
+tasks.forEach(t => {
+  const type = t.matrixType || "q1";
+
+  if (!t.completed) {
+    groups[type].push(t);
+  }
+});
+
+// Sort tasks inside each quadrant
+Object.keys(groups).forEach(q => {
+  groups[q].sort((a, b) => {
+
+    const today = todayKey();
+
+    const ad = a.dueDate || "";
+    const bd = b.dueDate || "";
+
+    const aExpired = ad && ad < today;
+    const bExpired = bd && bd < today;
+
+    // 1) No due date → go to top
+    if (!ad && bd) return -1;
+    if (!bd && ad) return 1;
+    if (!ad && !bd) return 0;
+
+    // 2) One expired → push expired to bottom
+    if (!aExpired && bExpired) return -1;
+    if (!bExpired && aExpired) return 1;
+
+    // 3) Both upcoming OR both expired → sort by date ascending
+    return ad.localeCompare(bd);
   });
+});
+
   
 
   const quadrants = {

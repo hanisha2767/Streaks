@@ -1358,4 +1358,86 @@ canvas {
   .reminder-item .icon-btn:hover {
     background: rgba(255,255,255,0.12);
   }
-    
+  .matrix-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 20px;
+    height: calc(100vh - 160px); /* FULL PAGE GRID HEIGHT */
+  }
+  
+  .matrix-box {
+    display: flex;
+    flex-direction: column;
+    background: #3a4150;
+    border-radius: 16px;
+    padding: 10px 14px;
+  
+    /* NEW: FIXED HEIGHT INSIDE GRID */
+    overflow: hidden;
+  }
+  
+  /* make only list scroll */
+  .matrix-list {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 6px;
+  }
+  
+  /* optional: clean scrollbar */
+  .matrix-list::-webkit-scrollbar {
+    width: 6px;
+  }
+  .matrix-list::-webkit-scrollbar-thumb {
+    background: #05c26a;
+    border-radius: 8px;
+  }
+  
+  .matrix-list {
+    flex: 1;
+  }
+  .matrix-page {
+    min-height: calc(100vh - 110px);
+    margin-left: 260px;
+    margin-top: 110px;
+    padding: 20px;
+    padding-bottom: 40px; /* ➜ small space at end of page */
+  }
+  .matrix-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 20px;
+  
+    max-height: calc(100vh - 220px); /* softer limit */
+  }
+  .matrix-box {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  .matrix-list {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 6px;
+  }
+  body {
+    overflow: hidden;
+  }
+/* Minimal small checkbox */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+
+  width: 14px;
+  height: 14px;
+  border: 2px solid #05c26a;
+  border-radius: 3px;
+  cursor: pointer;
+  background: transparent;
+}
+
+input[type="checkbox"]:checked {
+  background: #05c26a;
+}
