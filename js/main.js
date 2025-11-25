@@ -1,4 +1,6 @@
-// ===== Date Utility =====
+if (!localStorage.getItem("username")) {
+  window.location.href = "welcome.html";
+}
 function todayKey(date = new Date()) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -58,6 +60,14 @@ window.addEventListener('DOMContentLoaded', () => {
   customDaysWrap = document.getElementById('customDays');
   saveHabitBtn = document.getElementById('saveHabit');
   cancelHabitBtn = document.getElementById('cancelHabit');
+
+    // ==== Load user info from localStorage ====
+  const nm = localStorage.getItem("username");
+  const em = localStorage.getItem("useremail");
+
+  if (nm) document.getElementById("topName").textContent = "@" + nm;
+  if (em) document.getElementById("topEmail").textContent = em;
+
 
   todoModal = document.getElementById('todoModal');
   saveTaskBtn = document.getElementById('saveTask');
@@ -1266,4 +1276,29 @@ function tinyConfetti(x, y) {
 
     setTimeout(() => p.remove(), 600);
   }
+}
+
+// ==== Apple-style small date ====
+const dateDisplay = document.getElementById("dateDisplay");
+const d = new Date();
+const formattedDate = d.toLocaleDateString("en-US", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  year: "numeric"
+});
+if (dateDisplay) dateDisplay.textContent = formattedDate;
+
+// ==== Apple-style greeting ====
+function appleGreeting(name) {
+  const hr = new Date().getHours();
+  if (hr < 12) return `Good morning, <span>${name}</span> ☀️`;
+  if (hr < 18) return `Good afternoon, <span>${name}</span> 🌤️`;
+  return `Good evening, <span>${name}</span> 🌙`;
+}
+
+const nm = localStorage.getItem("username");
+if (nm) {
+  const greetEl = document.getElementById("greeting");
+  if (greetEl) greetEl.innerHTML = appleGreeting(nm);
 }
