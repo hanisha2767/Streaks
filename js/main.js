@@ -1,6 +1,4 @@
-if (!localStorage.getItem("username")) {
-  window.location.href = "welcome.html";
-}
+// ===== Date Utility =====
 function todayKey(date = new Date()) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -15,15 +13,57 @@ function saveHabits(h) { localStorage.setItem('habits', JSON.stringify(h)); }
 function getDailyProgress(k) { return JSON.parse(localStorage.getItem(`habitProgress_${k}`) || '{}'); }
 function saveDailyProgress(k, v) { localStorage.setItem(`habitProgress_${k}`, JSON.stringify(v)); }
 
-function getTasks() { return JSON.parse(localStorage.getItem('tasks') || '[]'); }
-function saveTasks(t) { localStorage.setItem('tasks', JSON.stringify(t)); }
-function getArchive() { 
-  return JSON.parse(localStorage.getItem('archive') || '[]'); 
-}
-function saveArchive(a) { 
-  localStorage.setItem('archive', JSON.stringify(a)); 
+// ====================== BACKEND TASK API ======================
+
+const API_BASE = "http://localhost:5000";   // change if needed
+const TOKEN = localStorage.getItem("token");
+
+// GET USER TASKS
+async function getTasks() {
+    const res = await fetch(`${API_BASE}/tasks/list`, {
+        headers: { "Authorization": `Bearer ${TOKEN}` }
+    });
+    return await res.json();
 }
 
+// ADD TASK
+async function addTask(taskData) {
+    const res = await fetch(`${API_BASE}/tasks/add`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${TOKEN}`
+        },
+        body: JSON.stringify(taskData)
+    });
+
+    return await res.json();
+}
+
+// DELETE TASK
+async function deleteTask(id) {
+    await fetch(`${API_BASE}/tasks/delete/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${TOKEN}` }
+    });
+}
+
+// COMPLETE TASK
+async function completeTask(id) {
+    await fetch(`${API_BASE}/tasks/complete/${id}`, {
+        method: "PATCH",
+        headers: { "Authorization": `Bearer ${TOKEN}` }
+    });
+}
+
+// Archive is stored on backend — no need for localStorage version
+async function getArchive() {
+    // If you want archives from backend later, add route
+    return [];
+}
+async function saveArchive(a) {
+    // Not needed unless backend supports it
+}
 
 function getReminders() { return JSON.parse(localStorage.getItem('reminders') || '[]'); }
 function saveReminders(r) { localStorage.setItem('reminders', JSON.stringify(r)); }
@@ -60,14 +100,6 @@ window.addEventListener('DOMContentLoaded', () => {
   customDaysWrap = document.getElementById('customDays');
   saveHabitBtn = document.getElementById('saveHabit');
   cancelHabitBtn = document.getElementById('cancelHabit');
-
-    // ==== Load user info from localStorage ====
-  const nm = localStorage.getItem("username");
-  const em = localStorage.getItem("useremail");
-
-  if (nm) document.getElementById("topName").textContent = "@" + nm;
-  if (em) document.getElementById("topEmail").textContent = em;
-
 
   todoModal = document.getElementById('todoModal');
   saveTaskBtn = document.getElementById('saveTask');
@@ -186,7 +218,7 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // Save task
-  document.addEventListener('click', e => {
+  document.addEventListener('click', async e => {
     if (e.target && e.target.id === 'saveTask') {
         
       const name = document.getElementById('taskName').value.trim();
@@ -209,29 +241,15 @@ window.addEventListener('DOMContentLoaded', () => {
       if (!matrixType) return alert("Please select a matrix category.");
 
   
-      const tasks = getTasks();
-      const editId = saveTaskBtn.dataset.editId;
-  
-      if (editId) {
-        const t = tasks.find(t => t.id === editId);
-        if (t) {
-          t.name = name;
-          t.dueDate = due;
-          t.focusTime = time;
-          t.matrixType = matrixType;
-        }
-      } else {
-        tasks.push({
-          id: String(Date.now()),
-          name,
-          dueDate: due,
-          focusTime: time,
-          matrixType,
-          completed: false
-        });
-      }
-  
-      saveTasks(tasks);
+      // 🔥 Save to backend instead of localStorage
+      await addTask({
+        title: name,
+        description: "",
+        dueDate: due,
+        matrixType: matrixType,
+        focusTime: time
+      });
+
       todoModal.classList.add('hidden');
   
       // 🔥🔥 MAIN FIX 🔥🔥
@@ -634,10 +652,10 @@ function renderTaskGrid(filter = 'all') {
     .forEach(btn => btn.addEventListener('click', () => openTodoModal(btn.dataset.id)));
 
   document.querySelectorAll('.del-task')
-    .forEach(btn => btn.addEventListener('click', () => {
-      saveTasks(getTasks().filter(t => t.id !== btn.dataset.id));
-      renderTaskGrid(filter);
-    }));
+  .forEach(btn => btn.addEventListener('click', async () => {
+    await deleteTask(btn.dataset.id);
+    await renderTaskGrid(filter);
+  }));
 }
 
 
@@ -893,23 +911,18 @@ Object.keys(groups).forEach(q => {
 
   // Checkbox toggle
   // Checkbox toggle (ARCHIVE READY)
-// Checkbox toggle — DO NOT ARCHIVE ANYMORE
-// Checkbox toggle — strike → fade → hide BUT not archive
-// Checkbox toggle — strike → fade → archive
+  // Checkbox toggle — DO NOT ARCHIVE ANYMORE
+  // Checkbox toggle — strike → fade → hide BUT not archive
+  // Checkbox toggle — strike → fade → archive
 document.querySelectorAll('.matrix-task input[type="checkbox"]').forEach(cb => {
-  cb.addEventListener("change", e => {
+  cb.addEventListener("change", async e => {
 
     const id = e.target.dataset.id;
-    let tasks = getTasks(); 
-    let t = tasks.find(x => x.id === id);
-    if (!t) return;
-
     const row = e.target.closest(".matrix-task");
     const nameEl = row.querySelector(".task-name");
 
     if (e.target.checked) {
 
-      // strike animation
       nameEl.classList.add("task-strike");
       setTimeout(() => nameEl.classList.add("striked"), 30);
 
@@ -918,32 +931,17 @@ document.querySelectorAll('.matrix-task input[type="checkbox"]').forEach(cb => {
         row.style.opacity = "0";
       }, 200);
 
-      setTimeout(() => {
-        
-        // mark as completed
-        t.completed = true;
-        t.completedDate = todayKey();
+      setTimeout(async () => {
 
-        // archive COPY — not the same reference
-        archiveTask({
-          ...t 
-        });
-
-        // IMPORTANT: keep the task inside tasks[] for dashboard
-        saveTasks(tasks);
-
-        renderMatrixTasks();
-        updateDashboardStats(); 
-        renderDashboardCharts();
+        await completeTask(id);          
+        await renderMatrixTasks();       
+        updateDashboardStats();         
+        renderDashboardCharts();        
 
       }, 500);
 
     } else {
-      // if unchecked
-      t.completed = false;
-      delete t.completedDate;
-      saveTasks(tasks);
-      renderMatrixTasks();
+      await renderMatrixTasks();
       updateDashboardStats();
       renderDashboardCharts();
     }
@@ -951,21 +949,19 @@ document.querySelectorAll('.matrix-task input[type="checkbox"]').forEach(cb => {
   });
 });
 
+// Edit
+document.querySelectorAll('.edit-task').forEach(btn => {
+  btn.addEventListener("click", () => openTodoModal(btn.dataset.id));
+});
 
-
-
-  // Edit
-  document.querySelectorAll('.edit-task').forEach(btn => {
-    btn.addEventListener("click", () => openTodoModal(btn.dataset.id));
+// Delete
+document.querySelectorAll('.del-task').forEach(btn => {
+  btn.addEventListener("click", async () => {
+    await deleteTask(btn.dataset.id);     //  backend
+    await renderMatrixTasks();            // reload
   });
+});
 
-  // Delete
-  document.querySelectorAll('.del-task').forEach(btn => {
-    btn.addEventListener("click", () => {
-      saveTasks(getTasks().filter(t => t.id !== btn.dataset.id));
-      renderMatrixTasks();
-    });
-  });
 }
 
 function renderRemindersPage() {
@@ -1276,29 +1272,4 @@ function tinyConfetti(x, y) {
 
     setTimeout(() => p.remove(), 600);
   }
-}
-
-// ==== Apple-style small date ====
-const dateDisplay = document.getElementById("dateDisplay");
-const d = new Date();
-const formattedDate = d.toLocaleDateString("en-US", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  year: "numeric"
-});
-if (dateDisplay) dateDisplay.textContent = formattedDate;
-
-// ==== Apple-style greeting ====
-function appleGreeting(name) {
-  const hr = new Date().getHours();
-  if (hr < 12) return `Good morning, <span>${name}</span> ☀️`;
-  if (hr < 18) return `Good afternoon, <span>${name}</span> 🌤️`;
-  return `Good evening, <span>${name}</span> 🌙`;
-}
-
-const nm = localStorage.getItem("username");
-if (nm) {
-  const greetEl = document.getElementById("greeting");
-  if (greetEl) greetEl.innerHTML = appleGreeting(nm);
 }
