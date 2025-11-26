@@ -13,8 +13,57 @@ function saveHabits(h) { localStorage.setItem('habits', JSON.stringify(h)); }
 function getDailyProgress(k) { return JSON.parse(localStorage.getItem(`habitProgress_${k}`) || '{}'); }
 function saveDailyProgress(k, v) { localStorage.setItem(`habitProgress_${k}`, JSON.stringify(v)); }
 
-function getTasks() { return JSON.parse(localStorage.getItem('tasks') || '[]'); }
-function saveTasks(t) { localStorage.setItem('tasks', JSON.stringify(t)); }
+// ====================== BACKEND TASK API ======================
+
+const API_BASE = "https://streaks-c41m.onrender.com";
+const TOKEN = localStorage.getItem("token");
+
+// GET USER TASKS
+async function getTasks() {
+    const res = await fetch(`${API_BASE}/tasks/list`, {
+        headers: { "Authorization": `Bearer ${TOKEN}` }
+    });
+    return await res.json();
+}
+
+// ADD TASK
+async function addTask(taskData) {
+    const res = await fetch(`${API_BASE}/tasks/add`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${TOKEN}`
+        },
+        body: JSON.stringify(taskData)
+    });
+
+    return await res.json();
+}
+
+// DELETE TASK
+async function deleteTask(id) {
+    await fetch(`${API_BASE}/tasks/delete/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${TOKEN}` }
+    });
+}
+
+// COMPLETE TASK
+async function completeTask(id) {
+    await fetch(`${API_BASE}/tasks/complete/${id}`, {
+        method: "PATCH",
+        headers: { "Authorization": `Bearer ${TOKEN}` }
+    });
+}
+
+// Archive is stored on backend — no need for localStorage version
+async function getArchive() {
+    // If you want archives from backend later, add route
+    return [];
+}
+async function saveArchive(a) {
+    // Not needed unless backend supports it
+}
 
 function getReminders() { return JSON.parse(localStorage.getItem('reminders') || '[]'); }
 function saveReminders(r) { localStorage.setItem('reminders', JSON.stringify(r)); }
@@ -88,6 +137,7 @@ window.addEventListener('DOMContentLoaded', () => {
       } else if (section === 'habits') renderHabitsCard();
       else if (section === 'todo') renderTodoPage();
       else if (section === 'reminders') renderRemindersPage();
+      else if (section === 'archive') renderArchivePage();
     });
   });
 
@@ -129,7 +179,25 @@ window.addEventListener('DOMContentLoaded', () => {
       }
 
       const habits = getHabits();
-      const editId = saveHabitBtn.dataset.editId;
+      if (editId) {
+        const t = tasks.find(t => t.id === editId);
+        if (t) {
+            t.name = name;
+            t.dueDate = due;
+            t.focusTime = time;
+            t.matrixType = matrixType;
+        }
+    } else {
+        tasks.push({
+            id: String(Date.now()),
+            name,
+            dueDate: due,
+            focusTime: time,
+            matrixType,
+            completed: false
+        });
+    }
+    
 
       if (editId) {
         const idx = habits.findIndex(h => h.id === editId);
@@ -150,29 +218,51 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   // Save task
-  document.addEventListener('click', e => {
+  document.addEventListener('click', async e => {
     if (e.target && e.target.id === 'saveTask') {
+        
       const name = document.getElementById('taskName').value.trim();
       const due = document.getElementById('taskDueDate').value;
-      const priority = document.getElementById('taskPriority').value;
-      const time = Number(document.getElementById('taskTime').value) || 0;
-      if (!name) return alert('Enter a task name');
-
-      const tasks = getTasks();
-      const editId = saveTaskBtn.dataset.editId;
-      if (editId) {
-        const t = tasks.find(t => t.id === editId);
-        if (t) Object.assign(t, { name, dueDate: due, priority, focusTime: time });
-      } else {
-        tasks.push({ id: String(Date.now()), name, dueDate: due, priority, focusTime: time, completed: false });
+      // prevent past date on save
+      if (due && due < todayKey()) {
+        return alert("You cannot select a past date.");
       }
-      saveTasks(tasks);
+      const time = Number(document.getElementById('taskTime').value) || 0;
+      const matrixType = document.getElementById('taskMatrixType').value;
+  
+      if (!name.trim()) return alert("Task name is required.");
+
+      if (!due) return alert("Please select a due date."); 
+
+      if (new Date(due) < new Date().setHours(0,0,0,0)) {
+        return alert("You cannot choose a past date.");
+      }
+
+      if (!matrixType) return alert("Please select a matrix category.");
+
+  
+      // 🔥 Save to backend instead of localStorage
+      await addTask({
+        title: name,
+        description: "",
+        dueDate: due,
+        matrixType: matrixType,
+        focusTime: time
+      });
+
       todoModal.classList.add('hidden');
-      renderTaskList('all');
+  
+      // 🔥🔥 MAIN FIX 🔥🔥
+      // Re-render the entire Matrix page
+      renderTodoPage();       
+  
+      // Load tasks into all 4 quadrants
+      renderMatrixTasks();
+  
       updateDashboardStats();
       renderDashboardCharts();
     }
-  });
+  });  
 
   // Top date
   const el = document.querySelector('.date');
@@ -196,6 +286,15 @@ function ensureTaskDates() {
   });
 
   if (updated) saveTasks(tasks);
+}
+
+function archiveTask(task) {
+  const archive = getArchive();
+  archive.push({
+    ...task,
+    archivedAt: todayKey()
+  });
+  saveArchive(archive);
 }
 
 
@@ -241,18 +340,25 @@ function getWeekFocusData() {
   const now = new Date();
   const start = new Date(now);
   start.setDate(now.getDate() - now.getDay() + 1);
+
   const labels = [], hours = [];
 
   for (let i = 0; i < 7; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
+
     const key = todayKey(d);
-    const mins = tasks.filter(t => t.completedDate === key).reduce((s, t) => s + (Number(t.focusTime) || 0), 0);
+    const mins = tasks
+      .filter(t => t.completedDate === key)
+      .reduce((s, t) => s + (Number(t.focusTime) || 0), 0);
+
     labels.push(`${d.getDate()} ${d.toLocaleString('default',{month:'short'})}`);
-    hours.push((mins / 60).toFixed(1));
+    hours.push(Number((mins / 60).toFixed(1))); // FIXED
   }
+
   return { labels, hours };
 }
+
 
 function getHabitsPieData() {
   const habits = getHabits();
@@ -430,44 +536,151 @@ function openHabitModal(editId = null) {
 // ================= TODO PAGE =================
 function renderTodoPage() {
   mainContent.innerHTML = `
-    <div class="habits-card todo-card">
-      <div class="card-header">
-        <h3>To-Do List</h3>
-        <div>
-          <button id="addTaskBtn" class="icon-btn">＋</button>
-          <button id="filterAll" class="icon-btn active-filter">All</button>
-          <button id="filterPending" class="icon-btn">Pending</button>
-          <button id="filterDone" class="icon-btn">Done</button>
+    <div class="todo-page">
+      <div class="todo-title">To Do List</div>
+
+      <div class="todo-actions">
+        <input type="text" id="todoSearch" class="todo-search" placeholder="Search tasks...">
+        
+        <div class="todo-filters">
+          <button class="todo-filter active" data-filter="all">All</button>
+          <button class="todo-filter" data-filter="today">Today</button>
+          <button class="todo-filter" data-filter="overdue">Overdue</button>
         </div>
+
+        <button id="addTaskBtn" class="matrix-add-btn">＋ New Task</button>
       </div>
-      <ul id="taskList" class="habit-list"></ul>
-      <div class="card-controls">
-        <div></div>
-        <button id="refreshTasks" class="btn ghost">Refresh</button>
+
+      <div class="matrix-grid">
+
+        <div class="matrix-box" data-type="q1">
+          <h2>Urgent & Important</h2>
+          <ul id="q1-list" class="matrix-list"></ul>
+        </div>
+
+        <div class="matrix-box" data-type="q2">
+          <h2>Not Urgent & Important</h2>
+          <ul id="q2-list" class="matrix-list"></ul>
+        </div>
+
+        <div class="matrix-box" data-type="q3">
+          <h2>Urgent & Not Important</h2>
+          <ul id="q3-list" class="matrix-list"></ul>
+        </div>
+
+        <div class="matrix-box" data-type="q4">
+          <h2>Not Urgent & Not Important</h2>
+          <ul id="q4-list" class="matrix-list"></ul>
+        </div>
+
       </div>
     </div>
   `;
 
-  document.getElementById('addTaskBtn').addEventListener('click', () => openTodoModal());
-  document.getElementById('refreshTasks').addEventListener('click', () => renderTaskList('all'));
+  // new task button
+  document.getElementById('addTaskBtn')
+    .addEventListener('click', () => openTodoModal());
 
-  document.getElementById('filterAll').addEventListener('click', e => { setActiveFilter(e.target); renderTaskList('all'); });
-  document.getElementById('filterPending').addEventListener('click', e => { setActiveFilter(e.target); renderTaskList('pending'); });
-  document.getElementById('filterDone').addEventListener('click', e => { setActiveFilter(e.target); renderTaskList('done'); });
+  // search
+  document.getElementById('todoSearch')
+    .addEventListener('input', renderMatrixTasks);
 
-  renderTaskList('all');
+  // filters
+  document.querySelectorAll('.todo-filter').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.todo-filter').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderMatrixTasks();
+    });
+  });
+
+  renderMatrixTasks();
 }
+
+async function renderTaskGrid(filter = 'all') {
+  const grid = document.getElementById('taskGrid');
+  const search = document.getElementById('taskSearch').value.toLowerCase();
+
+  let tasks = await getTasks();
+
+  // filtering
+  tasks = tasks.filter(t => {
+    if (search && !t.name.toLowerCase().includes(search)) return false;
+    if (filter === 'pending') return !t.completed;
+    if (filter === 'done') return t.completed;
+    if (filter === 'today') return t.dueDate === todayKey();
+    return true;
+  });
+
+  if (tasks.length === 0) {
+    grid.innerHTML = `<p class="todo-empty">No tasks to display.</p>`;
+    return;
+  }
+
+  grid.innerHTML = tasks.map(t => `
+    <div class="task-card ${t.focusTime ? `<span>⏱ ${t.focusTime} min</span>` : ""}>
+      <div class="task-top">
+        <input type="checkbox" class="task-check" data-id="${t.id}" ${t.completed ? "checked" : ""}>
+        <h3 class="task-name">${t.name}</h3>
+      </div>
+
+      <div class="task-details">
+        ${t.dueDate ? `<p class="task-info">📅 ${t.dueDate}</p>` : ""}
+        ${t.focusTime ? `<p class="task-info">⏱ ${t.focusTime} min</p>` : ""}
+      </div>
+
+      <div class="task-actions-grid">
+        <button class="task-btn edit-task" data-id="${t.id}">Edit</button>
+        <button class="task-btn del-task" data-id="${t.id}">Delete</button>
+      </div>
+    </div>
+  `).join("");
+
+  // checkbox handler
+  document.querySelectorAll('.task-check').forEach(cb => {
+   cb.addEventListener("change", async e => {
+
+     const id = e.target.dataset.id;
+
+     if (e.target.checked) {
+       // get checkbox screen coords
+       const rect = e.target.getBoundingClientRect();
+       tinyConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
+
+       // 🔥 Mark completed in BACKEND
+       await completeTask(id);
+     } else {
+       // TODO: backend un-complete route if needed
+     }
+
+     // 🔥 update UI
+     await renderMatrixTasks();
+     updateDashboardStats();
+     renderDashboardCharts();
+   });
+ });
+
+  document.querySelectorAll('.edit-task')
+    .forEach(btn => btn.addEventListener('click', () => openTodoModal(btn.dataset.id)));
+
+  document.querySelectorAll('.del-task')
+  .forEach(btn => btn.addEventListener('click', async () => {
+    await deleteTask(btn.dataset.id);
+    await renderTaskGrid(filter);
+  }));
+}
+
 
 function setActiveFilter(btn) {
   document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('active-filter'));
   btn.classList.add('active-filter');
 }
 
-function renderTaskList(filter = 'all') {
+async function renderTaskList(filter = 'all') {
   const list = document.getElementById('taskList');
   if (!list) return;
 
-  const tasks = getTasks();
+  const tasks = await getTasks();
   const filtered = tasks.filter(t => {
     if (filter === 'pending') return !t.completed;
     if (filter === 'done') return t.completed;
@@ -490,7 +703,6 @@ function renderTaskList(filter = 'all') {
       <div class="habit-text">
         <span class="task-name ${nameDone}">${escapeHtml(task.name)}</span>
         ${due} ${timeTag}
-        <span class="priority ${task.priority?.toLowerCase()}">${task.priority}</span>
       </div>
       <div class="habit-actions">
         <button class="icon-btn edit-task" data-id="${task.id}">Edit</button>
@@ -502,19 +714,33 @@ function renderTaskList(filter = 'all') {
 
   list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
     // In renderTaskList() → checkbox change
-cb.addEventListener('change', e => {
-  const id = e.target.dataset.id;
-  const tasks = getTasks();
-  const task = tasks.find(t => t.id === id);
-  if (!task) return;
-
-  task.completed = e.target.checked;
-  task.completedDate = e.target.checked ? todayKey() : null; // ← MUST SET THIS
-
-  saveTasks(tasks);
-  renderTaskList(filter);
-  updateDashboardStats();     // ← updates focus hours
-  renderDashboardCharts();    // ← updates weekly chart
+    cb.addEventListener("change", e => {
+      const id = e.target.dataset.id;
+      let tasks = getTasks();
+      const t = tasks.find(x => x.id === id);
+      if (!t) return;
+  
+      if (e.target.checked) {
+        // mark completed
+        t.completed = true;
+        t.completedDate = todayKey();
+  
+        // move to archive
+        archiveTask(t);
+  
+        // remove from active list
+        tasks = tasks.filter(x => x.id !== id);
+        saveTasks(tasks);
+      } else {
+        // rare case: someone unchecks from archive restore view  
+        t.completed = false;
+        saveTasks(tasks);
+      }
+  
+      // update UI
+      renderMatrixTasks();
+      updateDashboardStats();
+      renderDashboardCharts();
 });
   });
 
@@ -528,44 +754,249 @@ cb.addEventListener('change', e => {
   });
 }
 
-function openTodoModal(editId = null) {
+async function openTodoModal(editId = null) {
   todoModal.classList.remove('hidden');
-  document.getElementById('todoModalTitle').textContent = editId ? 'Edit Task' : 'Add Task';
 
   const name = document.getElementById('taskName');
   const due = document.getElementById('taskDueDate');
-  const pri = document.getElementById('taskPriority');
+  // block past dates
+  const today = new Date().toISOString().split("T")[0];
+  due.min = today;
   const time = document.getElementById('taskTime');
+  const type = document.getElementById('taskMatrixType');
 
-  name.value = ''; due.value = ''; pri.value = 'Medium'; time.value = '';
+  name.value = '';
+  due.value = '';
+  time.value = '';
+  type.value = 'q1';
+
   delete saveTaskBtn.dataset.editId;
 
   if (editId) {
-    const t = getTasks().find(x => x.id === editId);
+
+    const tasks = await getTasks();   // 🔥 load from backend
+    const t = tasks.find(x => x._id === editId);
+
     if (t) {
-      name.value = t.name;
-      due.value = t.dueDate || '';
-      pri.value = t.priority || 'Medium';
-      time.value = t.focusTime || '';
-      saveTaskBtn.dataset.editId = editId;
+      name.value = t.title;
+      due.value = t.dueDate || "";
+      time.value = t.focusTime || 0;
+      type.value = t.matrixType || "q1";
     }
+    saveTaskBtn.dataset.editId = editId; 
   }
 }
 
-// ================= REMINDERS PAGE =================
+
+async function renderMatrixTasks() {
+  const tasks = await getTasks();
+
+  const groups = { q1: [], q2: [], q3: [], q4: [] };
+
+tasks.forEach(t => {
+  const type = t.matrixType || "q1";
+
+  if (!t.completed) {
+    groups[type].push(t);
+  }
+});
+
+// Sort tasks inside each quadrant
+Object.keys(groups).forEach(q => {
+  groups[q].sort((a, b) => {
+
+    const today = todayKey();
+
+    const ad = a.dueDate || "";
+    const bd = b.dueDate || "";
+
+    const aExpired = ad && ad < today;
+    const bExpired = bd && bd < today;
+
+    // 1) No due date → go to top
+    if (!ad && bd) return -1;
+    if (!bd && ad) return 1;
+    if (!ad && !bd) return 0;
+
+    // 2) One expired → push expired to bottom
+    if (!aExpired && bExpired) return -1;
+    if (!bExpired && aExpired) return 1;
+
+    // 3) Both upcoming OR both expired → sort by date ascending
+    return ad.localeCompare(bd);
+  });
+});
+
+  
+
+  const quadrants = {
+    q1: document.getElementById("q1-list"),
+    q2: document.getElementById("q2-list"),
+    q3: document.getElementById("q3-list"),
+    q4: document.getElementById("q4-list")
+  };
+
+  Object.values(quadrants).forEach(q => q.innerHTML = "");
+
+  // Render tasks
+  Object.keys(groups).forEach(q => {
+    const list = quadrants[q];
+
+    if (!groups[q].length) {
+      list.innerHTML = "<p class='empty-matrix'>No tasks</p>";
+      return;
+    }
+
+    groups[q].forEach(t => {
+      const div = document.createElement("div");
+      div.className = `matrix-task ${t.completed ? "done" : ""}`;      
+      div.dataset.id = t.id;
+      div.draggable = true;
+
+      // ✔ Format date → "21 Nov"
+      let dateFormatted = "";
+      if (t.dueDate) {
+        const d = new Date(t.dueDate);
+        dateFormatted = d.toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short"
+        });
+      }
+
+      div.innerHTML = `
+        <div class="matrix-task-top">
+          <input type="checkbox" data-id="${t.id}" ${t.completed ? "checked" : ""}>
+          <span class="task-name">${t.name}</span>
+        </div>
+
+        <div class="matrix-meta">
+          <div class="matrix-meta-left">
+          ${t.dueDate ? `
+            <span class="${(!t.completed && t.dueDate < todayKey()) ? 'expired-date' : ''}">
+              🗓 ${dateFormatted}
+            </span>
+          ` : ""}
+          
+            ${t.focusTime ? `<span>⏱ ${t.focusTime} min</span>` : ""}
+          </div>
+
+          <div class="matrix-meta-right">
+            <button class="edit-task" data-id="${t.id}">Edit</button>
+            <button class="del-task" data-id="${t.id}">Delete</button>
+          </div>
+        </div>
+      `;
+
+      /* --- DRAG START --- */
+      div.addEventListener("dragstart", e => {
+        e.dataTransfer.setData("taskId", t.id);
+      });
+
+      list.appendChild(div);
+    });
+  });
+
+  // --- Drop handlers ---
+  ["q1", "q2", "q3", "q4"].forEach(q => {
+    const box = document.querySelector(`.matrix-box[data-type="${q}"]`);
+
+    box.addEventListener("dragover", e => {
+      e.preventDefault();
+      box.classList.add("drag-hover");
+    });
+
+    box.addEventListener("dragleave", () => {
+      box.classList.remove("drag-hover");
+    });
+
+    box.addEventListener("drop", e => {
+      box.classList.remove("drag-hover");
+      const id = e.dataTransfer.getData("taskId");
+
+      const tasks = getTasks();
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+
+      task.matrixType = q;
+      saveTasks(tasks);
+      renderMatrixTasks();
+    });
+  });
+
+  // Checkbox toggle
+  // Checkbox toggle (ARCHIVE READY)
+  // Checkbox toggle — DO NOT ARCHIVE ANYMORE
+  // Checkbox toggle — strike → fade → hide BUT not archive
+  // Checkbox toggle — strike → fade → archive
+document.querySelectorAll('.matrix-task input[type="checkbox"]').forEach(cb => {
+  cb.addEventListener("change", async e => {
+
+    const id = e.target.dataset.id;
+    const row = e.target.closest(".matrix-task");
+    const nameEl = row.querySelector(".task-name");
+
+    if (e.target.checked) {
+
+      nameEl.classList.add("task-strike");
+      setTimeout(() => nameEl.classList.add("striked"), 30);
+
+      setTimeout(() => {
+        row.style.transition = "opacity .3s ease";
+        row.style.opacity = "0";
+      }, 200);
+
+      setTimeout(async () => {
+
+        await completeTask(id);          
+        await renderMatrixTasks();       
+        updateDashboardStats();         
+        renderDashboardCharts();        
+
+      }, 500);
+
+    } else {
+      await renderMatrixTasks();
+      updateDashboardStats();
+      renderDashboardCharts();
+    }
+
+  });
+});
+
+// Edit
+document.querySelectorAll('.edit-task').forEach(btn => {
+  btn.addEventListener("click", () => openTodoModal(btn.dataset.id));
+});
+
+// Delete
+document.querySelectorAll('.del-task').forEach(btn => {
+  btn.addEventListener("click", async () => {
+    await deleteTask(btn.dataset.id);     //  backend
+    await renderMatrixTasks();            // reload
+  });
+});
+
+}
+
 function renderRemindersPage() {
   mainContent.innerHTML = `
-    <div class="reminder-card">
-      <div class="card-header">
-        <h3>Reminders</h3>
-        <button id="addReminderBtn" class="icon-btn">＋</button>
+    <div class="reminders-page">
+      <div class="reminders-header">
+        <h1>Reminders</h1>
+        <button id="newReminderBtn" class="matrix-add-btn">＋ New Reminder</button>
       </div>
-      <ul id="reminderList" class="habit-list"></ul>
+
+      <ul id="reminderList" class="reminder-list"></ul>
     </div>
   `;
-  document.getElementById('addReminderBtn').addEventListener('click', () => openReminderModal());
+
+  document.getElementById("newReminderBtn").addEventListener("click", () => {
+    openReminderModal();
+  });
+
   renderReminderList();
 }
+
 
 function renderReminderList() {
   const list = document.getElementById('reminderList');
@@ -601,7 +1032,123 @@ function renderReminderList() {
       updateDashboardStats();
     });
   });
+  
 }
+function renderArchivePage() {
+  mainContent.innerHTML = `
+    <div class="archive-page">
+      <h1>Archived Tasks</h1>
+      <div id="archiveList" class="archive-list"></div>
+    </div>
+  `;
+
+  renderArchiveList();
+}
+function renderArchiveList() {
+  const list = document.getElementById("archiveList");
+  const archive = getArchive();
+
+  if (!list) return;
+
+  if (archive.length === 0) {
+    list.innerHTML = `<p class="empty-archive">No archived tasks.</p>`;
+    return;
+  }
+
+  list.innerHTML = archive.map(t => `
+    <div class="archive-item" data-id="${t.id}">
+      <div class="archive-info">
+        <h3>${t.name}</h3>
+        ${t.dueDate ? `<p>📅 ${t.dueDate}</p>` : ""}
+        ${t.focusTime ? `<p>⏱ ${t.focusTime} min</p>` : ""}
+        <p class="archived-on">Archived: ${t.archivedAt}</p>
+      </div>
+
+      <div class="archive-actions">
+        <button class="archive-btn restore-btn" data-id="${t.id}">Restore</button>
+        <button class="archive-btn delete-btn" data-id="${t.id}">Delete</button>
+      </div>
+    </div>
+  `).join("");
+
+  // DELETE handler
+  document.querySelectorAll(".delete-btn").forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.dataset.id;
+      const item = btn.closest(".archive-item");
+  
+      // add animation class
+      item.classList.add("disappear");
+  
+      // after animation ends → remove & refresh
+      setTimeout(() => {
+        saveArchive(archive.filter(t => t.id !== id));
+        renderArchiveList();
+      }, 350);
+    };
+  });
+  
+
+  // RESTORE handler
+// RESTORE handler
+document.querySelectorAll(".restore-btn").forEach(btn => {
+  btn.onclick = () => {
+    const id = btn.dataset.id;
+    const item = btn.closest(".archive-item");
+
+    // find the archived task
+    const archive = getArchive();
+    const task = archive.find(x => x.id === id);
+    if (!task) return;
+
+    // animation
+    item.classList.add("disappear");
+
+    setTimeout(() => {
+      // remove from archive
+      saveArchive(archive.filter(x => x.id !== id));
+
+      // restore in tasks list
+      let tasks = getTasks();
+      let existing = tasks.find(x => x.id === id);
+
+      if (existing) {
+        // the task already exists → update it
+        existing.completed = false;
+        delete existing.completedDate;
+      } else {
+        // if it isn't there → push a clean copy
+        tasks.push({
+          ...task,
+          completed: false
+        });
+      }
+
+      saveTasks(tasks);
+
+      renderArchiveList();
+      renderMatrixTasks();
+      updateDashboardStats();
+      renderDashboardCharts();
+
+    }, 300);
+  };
+});
+}
+
+function cleanArchive() {
+  const archive = getArchive();
+  const now = new Date(todayKey());
+
+  const filtered = archive.filter(t => {
+    const archived = new Date(t.archivedAt);
+    return (now - archived) / 86400000 < 7;
+  });
+
+  saveArchive(filtered);
+}
+cleanArchive();
+
 
 function openReminderModal(editId = null) {
   const modal = document.getElementById('reminderModal');
@@ -610,9 +1157,12 @@ function openReminderModal(editId = null) {
   const time = document.getElementById('reminderTime');
 
   modal.classList.remove('hidden');
-  title.value = ''; date.value = ''; time.value = '';
+  title.value = '';
+  date.value = '';
+  time.value = '';
   delete saveReminderBtn.dataset.editId;
 
+  // ---- EDIT MODE ----
   if (editId) {
     const r = getReminders().find(x => x.id === editId);
     if (r) {
@@ -624,28 +1174,47 @@ function openReminderModal(editId = null) {
     }
   }
 
-  const saveHandler = () => {
+  // ---- RESET OLD EVENT LISTENERS ----
+  const newSaveBtn = saveReminderBtn.cloneNode(true);
+  saveReminderBtn.parentNode.replaceChild(newSaveBtn, saveReminderBtn);
+  saveReminderBtn = newSaveBtn;
+
+  // ---- SAVE HANDLER ----
+  saveReminderBtn.addEventListener('click', () => {
     const t = title.value.trim();
     const d = date.value;
     const tm = time.value;
-    if (!t || !d || !tm) return alert('Fill all fields');
+    if (!t || !d || !tm) return alert("Fill all fields");
+
     const datetime = new Date(`${d}T${tm}`);
-    if (isNaN(datetime)) return alert('Invalid date/time');
+    if (isNaN(datetime)) return alert("Invalid date/time");
 
     let reminders = getReminders();
+
     if (saveReminderBtn.dataset.editId) {
+      // EDIT REMINDER
       const idx = reminders.findIndex(x => x.id === saveReminderBtn.dataset.editId);
-      if (idx >= 0) reminders[idx] = { ...reminders[idx], title: t, datetime };
+      if (idx >= 0) {
+        reminders[idx] = {
+          ...reminders[idx],
+          title: t,
+          datetime: datetime.toISOString(),    // FIXED
+        };
+      }
     } else {
-      reminders.push({ id: String(Date.now()), title: t, datetime });
+      // NEW REMINDER
+      reminders.push({
+        id: String(Date.now()),
+        title: t,
+        datetime: datetime.toISOString(),      // FIXED
+      });
     }
+
     saveReminders(reminders);
-    modal.classList.add('hidden');
+    modal.classList.add("hidden");
     renderReminderList();
     updateDashboardStats();
-    saveReminderBtn.removeEventListener('click', saveHandler);
-  };
-  saveReminderBtn.addEventListener('click', saveHandler);
+  });
 }
 
 // ================= CALENDAR (Dashboard) =================
@@ -667,18 +1236,40 @@ function generateHabitCalendar() {
   }
 }
 // ====== Load user info on dashboard ======
-window.addEventListener('DOMContentLoaded', () => {
-  const email = localStorage.getItem('userEmail');
-  const name = localStorage.getItem('userName');
+// ===== Load user info (matching friend's main.js) =====
+window.addEventListener("DOMContentLoaded", () => {
+  const nm = localStorage.getItem("username");
+  const em = localStorage.getItem("useremail");
 
-  if (email && name) {
-    const nameEl = document.querySelector('.profile-info .para:nth-child(1)');
-    const emailEl = document.querySelector('.profile-info .para:nth-child(2)');
+  const nameEl = document.getElementById("topName");
+  const emailEl = document.getElementById("topEmail");
 
-    if (nameEl) nameEl.textContent = `@${name}`;
-    if (emailEl) emailEl.textContent = email;
-  } else {
-    // If user not signed up or info missing
-    console.warn('No user info found in localStorage.');
-  }
+  if (nm && nameEl) nameEl.textContent = "@" + nm;
+  if (em && emailEl) emailEl.textContent = em;
 });
+
+// ===== LOGOUT BUTTON =====
+document.querySelector(".logo-logout")?.addEventListener("click", () => {
+  localStorage.clear();
+  window.location.href = "login.html";
+});
+
+function tinyConfetti(x, y) {
+  for (let i = 0; i < 12; i++) {
+    const p = document.createElement("div");
+    p.className = "tiny-confetti";
+
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 3;
+
+    p.style.setProperty("--dx", Math.cos(angle) * speed + "px");
+    p.style.setProperty("--dy", Math.sin(angle) * speed + "px");
+
+    p.style.left = x + "px";
+    p.style.top = y + "px";
+
+    document.body.appendChild(p);
+
+    setTimeout(() => p.remove(), 600);
+  }
+}
