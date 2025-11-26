@@ -1,4 +1,11 @@
 // ===== Date Utility =====
+document.fonts && document.fonts.ready.then(() => {
+  console.log("Fonts loaded");
+});
+
+if (!localStorage.getItem("username")) {
+  window.location.href = "welcome.html";
+}
 function todayKey(date = new Date()) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -81,6 +88,56 @@ function readableDate() {
   return now.toLocaleDateString(undefined, opt);
 }
 
+// ===== Streak Calculation =====
+function getStreak(habitId) {
+  const habits = getHabits();
+  const habit = habits.find(h => h.id === habitId);
+  if (!habit) return 0;
+
+  let streak = 0;
+  let current = new Date();
+  const maxCheck = 365; // Safety limit
+
+  for (let i = 0; i < maxCheck; i++) {
+    const key = todayKey(current);
+    const weekday = current.getDay();
+    let isDue = false;
+
+    switch (habit.freq) {
+      case 'daily':
+        isDue = true;
+        break;
+      case 'weekdays':
+        isDue = weekday >= 1 && weekday <= 5;
+        break;
+      case 'weekends':
+        isDue = weekday === 0 || weekday === 6;
+        break;
+      case 'custom':
+        isDue = habit.days?.includes(weekday);
+        break;
+    }
+
+    if (isDue) {
+      const progress = getDailyProgress(key);
+      if (!progress[habitId]) {
+        // if today is incomplete → skip it and continue streak from yesterday
+        if (i === 0) {
+            current.setDate(current.getDate() - 1);
+            continue;
+        }
+        break;
+    }
+    streak++;
+    
+    }
+
+    current.setDate(current.getDate() - 1);
+  }
+
+  return streak;
+}
+
 // ===== Global Vars =====
 let navItems, mainContent;
 let modal, habitNameIn, customDaysWrap, saveHabitBtn, cancelHabitBtn;
@@ -131,6 +188,11 @@ window.addEventListener('DOMContentLoaded', () => {
             <div class="charts-grid">
               <div class="chart-container"><p class="title-middle">Focus Hours (This Week)</p><canvas id="focusWeekChart"></canvas></div>
               <div class="chart-container"><p class="title-middle">Habits Overview</p><canvas id="habitsPie"></canvas></div>
+              <div class="chart-container reminders-mini">
+                <p class="title-middle">Upcoming Reminders</p>
+                <div id="dashboardReminders"></div>
+              </div>
+
             </div>
           </section>`;
         renderDashboard();
@@ -179,26 +241,7 @@ window.addEventListener('DOMContentLoaded', () => {
       }
 
       const habits = getHabits();
-      if (editId) {
-        const t = tasks.find(t => t.id === editId);
-        if (t) {
-            t.name = name;
-            t.dueDate = due;
-            t.focusTime = time;
-            t.matrixType = matrixType;
-        }
-    } else {
-        tasks.push({
-            id: String(Date.now()),
-            name,
-            dueDate: due,
-            focusTime: time,
-            matrixType,
-            completed: false
-        });
-    }
-    
-
+      let editId = saveHabitBtn.dataset.editId;
       if (editId) {
         const idx = habits.findIndex(h => h.id === editId);
         if (idx >= 0) Object.assign(habits[idx], { name, freq, days });
@@ -216,6 +259,8 @@ window.addEventListener('DOMContentLoaded', () => {
       renderDashboardCharts();
     });
   }
+  ctx.font = `${height / 7}px "Poppins", sans-serif`;
+  ctx.font = `${height / 14}px "Poppins", sans-serif`;
 
   // Save task
   document.addEventListener('click', async e => {
@@ -304,6 +349,8 @@ function renderDashboard() {
   updateDashboardStats();
   renderDashboardCharts();
   generateHabitCalendar();
+  renderDashboardReminders();
+
 
   const t = new Date();
   const dateEl = document.querySelector('.date');
@@ -311,28 +358,152 @@ function renderDashboard() {
     dateEl.innerHTML = `<span class="date-num">${String(t.getDate()).padStart(2, '0')}</span> ${t.toLocaleString('default',{month:'short'})} ${t.getFullYear()}`;
 }
 
+function renderDashboardReminders() {
+  const list = document.getElementById("dashboardReminderList");
+  if (!list) return;
+
+  let reminders = getReminders();
+
+  // Sort by earliest datetime
+  reminders.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+
+  // Show only top 3 upcoming
+  reminders = reminders.slice(0, 3);
+
+  if (reminders.length === 0) {
+    list.innerHTML = `<li>No upcoming reminders!</li>`;
+    return;
+  }
+
+  list.innerHTML = reminders.map(r => {
+    const dt = new Date(r.datetime);
+    return `
+      <li>
+        <span>${escapeHtml(r.title)}</span>
+        <span class="reminder-mini-date">
+          ${dt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+        </span>
+      </li>
+    `;
+  }).join("");
+}
+
 function renderDashboardCharts() {
+  // Destroy previous charts
   [window.focusWeekChart, window.habitsPie].forEach(ch => ch?.destroy?.());
 
+  /* ==========================
+     FOCUS HOURS LINE GRAPH
+  ========================== */
   const weekCtx = document.getElementById('focusWeekChart');
   if (weekCtx) {
     const weekData = getWeekFocusData();
+
     window.focusWeekChart = new Chart(weekCtx, {
       type: 'line',
-      data: { labels: weekData.labels, datasets: [{ data: weekData.hours, borderColor: '#05c26a', backgroundColor: 'rgba(5,194,106,0.08)', tension: 0.4, fill: true }] },
-      options: { plugins: { legend: { display: false } }, maintainAspectRatio: false }
+      data: {
+        labels: weekData.labels,
+        datasets: [{
+          data: weekData.hours,
+          borderColor: '#05c26a',
+          backgroundColor: 'rgba(5,194,106,0.08)',
+          tension: 0.4,
+          fill: true
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { display: false }
+        },
+        maintainAspectRatio: false,
+        scales: {
+          x: { grid: { display: false }},
+          y: {
+            grid: { display: false },
+            ticks: {
+              display: true,
+              color: "#A6ADBA",
+              font: {
+                size: 12
+              }
+            },
+            title: {
+              display: true,
+              color: "#ffffff",
+              font: {
+                size: 14,
+                weight: "600"
+              }
+            }
+          }
+          
+          
+        }
+      }
     });
   }
 
+  /* ==========================
+     HABIT PROGRESS RING
+  ========================== */
   const pieCtx = document.getElementById('habitsPie');
-  if (pieCtx) {
-    const { completed, pending } = getHabitsPieData();
-    window.habitsPie = new Chart(pieCtx, {
-      type: 'pie',
-      data: { labels: ['Completed', 'Pending'], datasets: [{ data: [completed, pending], backgroundColor: ['#05c26a', '#ffca28'] }] },
-      options: { plugins: { legend: { position: 'bottom' } }, maintainAspectRatio: false }
-    });
-  }
+if (pieCtx) {
+  const { completed, pending } = getHabitsPieData();
+  const total = completed + pending;
+  const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+  // motivational message
+  let msg = "Let's go!";
+  if (percent >= 80) msg = "Way to go!";
+  else if (percent >= 50) msg = "Keep it up!";
+  else if (percent >= 20) msg = "You got this!";
+
+  // ⭐ CUSTOM PLUGIN FOR CENTER TEXT ⭐
+  const centerTextPlugin = {
+    id: 'centerText',
+    afterDraw(chart) {
+      const { ctx, chartArea: { width, height } } = chart;
+
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+
+      // percentage
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `${height / 7}px Poppins`;
+      ctx.fillText(`${percent}%`, width / 2, height / 2 - 10);
+
+      // message text
+      ctx.fillStyle = "#A6ADBA";
+      ctx.font = `${height / 14}px Poppins`;
+      ctx.fillText(msg, width / 2, height / 2 + 25);
+
+      ctx.restore();
+    }
+  };
+
+  window.habitsPie = new Chart(pieCtx, {
+    type: 'doughnut',
+    plugins: [centerTextPlugin],  // ⭐ required ⭐
+    data: {
+      datasets: [{
+        data: [completed, pending],
+        backgroundColor: ['#05c26a', '#1c2230'],
+        borderWidth: 0,
+
+        // ⭐ MAKE RING THINNER ⭐
+        cutout: '88%' 
+      }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false }
+      }
+    }
+  });
+}
 }
 
 function getWeekFocusData() {
@@ -381,7 +552,9 @@ function updateDashboardStats() {
   const tasks = getTasks();
   const today = todayKey();
 
-  document.getElementById('todo-count')?.replaceChildren(tasks.length);
+  const pendingTasks = tasks.filter(t => !t.completed).length;
+document.getElementById('todo-count')?.replaceChildren(pendingTasks);
+
 
   const doneToday = tasks.filter(t => t.completed && t.completedDate === today);
   const mins = doneToday.reduce((s, t) => s + (Number(t.focusTime) || 0), 0);
@@ -458,122 +631,212 @@ function renderTodaysList() {
     return false;
   });
 
+  // ⭐⭐⭐ SORT BEFORE RENDERING ⭐⭐⭐
+  todays.sort((a, b) => {
+    const prog = getDailyProgress(today);
+    const aDone = prog[a.id] ? 1 : 0;
+    const bDone = prog[b.id] ? 1 : 0;
+
+    const aStreak = getStreak(a.id);
+    const bStreak = getStreak(b.id);
+
+    // Completed habits go to bottom
+    if (aDone !== bDone) return aDone - bDone;
+
+    // Otherwise sort by least streak first
+    return aStreak - bStreak;
+  });
+
   list.innerHTML = '';
   if (todays.length === 0) {
     list.innerHTML = `<li style="color:#A6ADBA;padding:12px">No habits today. Add one!</li>`;
     return;
   }
 
+  // ⭐ Now render in correct order
   todays.forEach(h => {
-    const li = document.createElement('li');
-    li.className = 'habit-item';
+    const streak = getStreak(h.id);
     const checked = progress[h.id] ? 'checked' : '';
     const doneClass = progress[h.id] ? 'done' : '';
+
+    const li = document.createElement('li');
+    li.className = 'habit-item';
+
     li.innerHTML = `
-      <input type="checkbox" class="habit-checkbox" data-id="${h.id}" ${checked}>
-      <div class="habit-text ${doneClass}">${escapeHtml(h.name)}</div>
-      <div class="habit-actions">
-        <button class="icon-btn edit" data-id="${h.id}">Edit</button>
-        <button class="icon-btn del" data-id="${h.id}">Delete</button>
+      <div class="habit-left">
+        <input type="checkbox" class="habit-checkbox" data-id="${h.id}" ${checked}>
+        <span class="habit-text ${doneClass}">${escapeHtml(h.name)}</span>
+      </div>
+
+      <div class="habit-right">
+        <span class="streak">${streak}</span>
+        <button class="icon-btn edit-habit" data-id="${h.id}">Edit</button>
+        <button class="icon-btn del-habit" data-id="${h.id}">Delete</button>
       </div>
     `;
-    list.appendChild(li);
-  });
+    // checkbox handling
+list.querySelectorAll('.habit-checkbox').forEach(cb => {
+  cb.addEventListener('change', e => {
+    const id = e.target.dataset.id;
+    const today = todayKey();
+    let prog = getDailyProgress(today);
 
-  list.querySelectorAll('.habit-checkbox').forEach(cb => {
-    cb.addEventListener('change', e => {
-      const id = e.target.dataset.id;
-      const prog = getDailyProgress(todayKey());
-      prog[id] = e.target.checked;
-      saveDailyProgress(todayKey(), prog);
+    if (e.target.checked) {
+      prog[id] = true;
+    } else {
+      delete prog[id];
+    }
+
+    saveDailyProgress(today, prog);
+
+    // important: re-render AFTER saving
+    setTimeout(() => {
       renderTodaysList();
       updateDashboardStats();
       renderDashboardCharts();
-    });
+    }, 0);
+  });
+});
+
+    list.appendChild(li);
   });
 
-  list.querySelectorAll('.edit').forEach(btn => btn.addEventListener('click', () => openHabitModal(btn.dataset.id)));
-  list.querySelectorAll('.del').forEach(btn => {
-    btn.addEventListener('click', () => {
-      let habits = getHabits().filter(h => h.id !== btn.dataset.id);
-      saveHabits(habits);
-      const prog = getDailyProgress(todayKey());
-      delete prog[btn.dataset.id];
-      saveDailyProgress(todayKey(), prog);
-      renderTodaysList();
-      updateDashboardStats();
-    });
-  });
+  // checkbox, edit, delete handlers remain same
 }
 
+
 function openHabitModal(editId = null) {
+  const titleEl = document.getElementById('modalTitle');
+  titleEl.textContent = editId ? 'Edit Habit' : 'Add Habit';
+
   modal.classList.remove('hidden');
-  document.getElementById('modalTitle').textContent = editId ? 'Edit Habit' : 'Add Habit';
   habitNameIn.value = '';
-  document.querySelectorAll('input[name="freq"]').forEach(r => r.checked = false);
   document.querySelector('input[name="freq"][value="daily"]').checked = true;
   customDaysWrap.classList.add('hidden');
-  customDaysWrap.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
   delete saveHabitBtn.dataset.editId;
 
   if (editId) {
     const h = getHabits().find(x => x.id === editId);
     if (h) {
       habitNameIn.value = h.name;
-      const freqEl = document.querySelector(`input[name="freq"][value="${h.freq}"]`);
-      if (freqEl) freqEl.checked = true;
-      if (h.freq === 'custom') {
+      document.querySelector(`input[name="freq"][value="${h.freq}"]`).checked = true;
+      if (h.freq === 'custom' && h.days) {
         customDaysWrap.classList.remove('hidden');
-        customDaysWrap.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-          cb.checked = h.days?.includes(Number(cb.dataset.day));
+        h.days.forEach(d => {
+          customDaysWrap.querySelector(`input[data-day="${d}"]`).checked = true;
         });
       }
       saveHabitBtn.dataset.editId = editId;
     }
+    // ==== DAY BUTTON SELECT EFFECT ====
+document.querySelectorAll('#customDays label').forEach(lb => {
+  lb.addEventListener('click', () => {
+    lb.classList.toggle('selected');
+  });
+});
+// ==== DAY BUTTON SELECT EFFECT ====
+document.addEventListener('click', function (e) {
+  const lb = e.target.closest('#customDays label');
+  if (!lb) return;
+  lb.classList.toggle('selected');
+});
+
+
   }
+
+  // Reset event listener
+  const newSaveBtn = saveHabitBtn.cloneNode(true);
+  saveHabitBtn.parentNode.replaceChild(newSaveBtn, saveHabitBtn);
+  saveHabitBtn = newSaveBtn;
+
+  saveHabitBtn.addEventListener('click', () => {
+    const name = habitNameIn.value.trim();
+    if (!name) return alert('Enter a habit name');
+    const freq = document.querySelector('input[name="freq"]:checked').value;
+    let days = [];
+
+    if (freq === 'custom') {
+      customDaysWrap.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        if (cb.checked) days.push(Number(cb.dataset.day));
+      });
+      if (!days.length) return alert('Select at least one day');
+    }
+
+    const habits = getHabits();
+
+    if (editId) {
+      const idx = habits.findIndex(h => h.id === editId);
+      if (idx >= 0) Object.assign(habits[idx], { name, freq, days });
+    } else {
+      habits.push({
+        id: String(Date.now()) + Math.random().toString(36).slice(2, 6),
+        name, freq, days
+      });
+    }
+
+    saveHabits(habits);
+    modal.classList.add('hidden');
+    renderTodaysList();
+    updateDashboardStats();
+    renderDashboardCharts();
+  });
 }
 
-// ================= TODO PAGE =================
+
+// ================= TODO PAGE (Eisenhower Matrix) =================
+let editId; // Global for task editing
+
 function renderTodoPage() {
   mainContent.innerHTML = `
-    <div class="matrix-page">
-
-      <div class="matrix-header">
-        <h1>To do list</h1>
-        <button id="newTaskMatrix" class="matrix-add-btn">＋ New Task</button>
+    <div class="todo-page">
+      <div class="todo-title">To Do List </div>
+      <div class="todo-actions">
+        <input type="text" id="todoSearch" class="todo-search" placeholder="Search tasks...">
+        <div class="todo-filters">
+          <button class="todo-filter active" data-filter="all">All</button>
+          <button class="todo-filter" data-filter="today">Today</button>
+          <button class="todo-filter" data-filter="overdue">Overdue</button>
+        </div>
+        <button id="addTaskBtn" class="matrix-add-btn">＋ New Task</button>
       </div>
 
       <div class="matrix-grid">
-
-        <div class="matrix-box q1" data-type="q1">
-          <h2>Urgent + Important</h2>
-          <p class="q-desc">Do First</p>
-          <div class="matrix-list" id="q1-list"></div>
+        <div class="matrix-box" data-type="q1">
+          <h2>Urgent & Important</h2>
+          <p class="q-desc">Do first: Crises, deadlines</p>
+          <ul id="q1-list" class="matrix-list"></ul>
         </div>
-
-        <div class="matrix-box q2" data-type="q2">
-          <h2>Not Urgent + Important</h2>
-          <p class="q-desc">Schedule</p>
-          <div class="matrix-list" id="q2-list"></div>
+        <div class="matrix-box" data-type="q2">
+          <h2>Not Urgent & Important</h2>
+          <p class="q-desc">Schedule: Planning, relationships</p>
+          <ul id="q2-list" class="matrix-list"></ul>
         </div>
-
-        <div class="matrix-box q3" data-type="q3">
-          <h2>Urgent + Not Important</h2>
-          <p class="q-desc">Delegate</p>
-          <div class="matrix-list" id="q3-list"></div>
+        <div class="matrix-box" data-type="q3">
+          <h2>Urgent & Not Important</h2>
+          <p class="q-desc">Delegate: Interruptions, some meetings</p>
+          <ul id="q3-list" class="matrix-list"></ul>
         </div>
-
-        <div class="matrix-box q4" data-type="q4">
-          <h2>Not Urgent + Not Important</h2>
-          <p class="q-desc">Eliminate</p>
-          <div class="matrix-list" id="q4-list"></div>
+        <div class="matrix-box" data-type="q4">
+          <h2>Not Urgent & Not Important</h2>
+          <p class="q-desc">Delete: Time wasters, busywork</p>
+          <ul id="q4-list" class="matrix-list"></ul>
         </div>
-
       </div>
     </div>
   `;
 
-  document.getElementById("newTaskMatrix").addEventListener("click", () => openTodoModal());
+  document.getElementById('addTaskBtn').addEventListener('click', () => openTodoModal());
+
+  // Search and filter handlers
+  document.getElementById('todoSearch').addEventListener('input', renderMatrixTasks);
+  document.querySelectorAll('.todo-filter').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.todo-filter').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderMatrixTasks();
+    });
+  });
+
   renderMatrixTasks();
 }
 
@@ -742,9 +1005,8 @@ function renderTaskList(filter = 'all') {
   });
 }
 
-function openTodoModal(editId = null) {
-  todoModal.classList.remove('hidden');
 
+function openTodoModal(editId = null) {
   const name = document.getElementById('taskName');
   const due = document.getElementById('taskDueDate');
   // block past dates
@@ -775,43 +1037,54 @@ function openTodoModal(editId = null) {
 
 
 function renderMatrixTasks() {
-  const tasks = getTasks();
+  const searchTerm = document.getElementById('todoSearch')?.value.toLowerCase() || '';
+  const activeFilter = document.querySelector('.todo-filter.active')?.dataset.filter || 'all';
+
+  let tasks = getTasks().filter(t => !t.completed);
+
+  // Apply search filter
+  if (searchTerm) {
+    tasks = tasks.filter(t => t.name.toLowerCase().includes(searchTerm));
+  }
+
+  // Apply date filters
+  const today = todayKey();
+  if (activeFilter === 'today') {
+    tasks = tasks.filter(t => t.dueDate === today);
+  } else if (activeFilter === 'overdue') {
+    tasks = tasks.filter(t => t.dueDate && t.dueDate < today);
+  }
 
   const groups = { q1: [], q2: [], q3: [], q4: [] };
 
-tasks.forEach(t => {
-  const type = t.matrixType || "q1";
-
-  if (!t.completed) {
+  tasks.forEach(t => {
+    const type = t.matrixType || "q1";
     groups[type].push(t);
-  }
-});
-
-// Sort tasks inside each quadrant
-Object.keys(groups).forEach(q => {
-  groups[q].sort((a, b) => {
-
-    const today = todayKey();
-
-    const ad = a.dueDate || "";
-    const bd = b.dueDate || "";
-
-    const aExpired = ad && ad < today;
-    const bExpired = bd && bd < today;
-
-    // 1) No due date → go to top
-    if (!ad && bd) return -1;
-    if (!bd && ad) return 1;
-    if (!ad && !bd) return 0;
-
-    // 2) One expired → push expired to bottom
-    if (!aExpired && bExpired) return -1;
-    if (!bExpired && aExpired) return 1;
-
-    // 3) Both upcoming OR both expired → sort by date ascending
-    return ad.localeCompare(bd);
   });
-});
+
+  // Sort tasks inside each quadrant
+  Object.keys(groups).forEach(q => {
+    groups[q].sort((a, b) => {
+
+      const ad = a.dueDate || "";
+      const bd = b.dueDate || "";
+
+      const aExpired = ad && ad < today;
+      const bExpired = bd && bd < today;
+
+      // 1) No due date → go to top
+      if (!ad && bd) return -1;
+      if (!bd && ad) return 1;
+      if (!ad && !bd) return 0;
+
+      // 2) One expired → push expired to bottom
+      if (!aExpired && bExpired) return -1;
+      if (!bExpired && aExpired) return 1;
+
+      // 3) Both upcoming OR both expired → sort by date ascending
+      return ad.localeCompare(bd);
+    });
+  });
 
   
 
@@ -909,11 +1182,6 @@ Object.keys(groups).forEach(q => {
     });
   });
 
-  // Checkbox toggle
-  // Checkbox toggle (ARCHIVE READY)
-  // Checkbox toggle — DO NOT ARCHIVE ANYMORE
-  // Checkbox toggle — strike → fade → hide BUT not archive
-  // Checkbox toggle — strike → fade → archive
 document.querySelectorAll('.matrix-task input[type="checkbox"]').forEach(cb => {
   cb.addEventListener("change", async e => {
 
@@ -959,6 +1227,12 @@ document.querySelectorAll('.del-task').forEach(btn => {
   btn.addEventListener("click", async () => {
     await deleteTask(btn.dataset.id);     //  backend
     await renderMatrixTasks();            // reload
+
+
+  })
+  // Edit
+  document.querySelectorAll('.edit-task').forEach(btn => {
+    btn.addEventListener("click", () => openTodoModal(btn.dataset.id));
   });
 });
 
@@ -1272,4 +1546,29 @@ function tinyConfetti(x, y) {
 
     setTimeout(() => p.remove(), 600);
   }
+}
+
+// ==== Apple-style small date ====
+const dateDisplay = document.getElementById("dateDisplay");
+const d = new Date();
+const formattedDate = d.toLocaleDateString("en-US", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  year: "numeric"
+});
+if (dateDisplay) dateDisplay.textContent = formattedDate;
+
+// ==== Apple-style greeting ====
+function appleGreeting(name) {
+  const hr = new Date().getHours();
+  if (hr < 12) return `Good morning, <span>${name}</span> ☀️`;
+  if (hr < 18) return `Good afternoon, <span>${name}</span> 🌤️`;
+  return `Good evening, <span>${name}</span> 🌙`;
+}
+
+const nm = localStorage.getItem("username");
+if (nm) {
+  const greetEl = document.getElementById("greeting");
+  if (greetEl) greetEl.innerHTML = appleGreeting(nm);
 }
