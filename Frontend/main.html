@@ -31,20 +31,29 @@
         <img class="small-logo" src="images/dailies.png" alt="">
         <p>REMAINDERS</p>
       </div>
+      <div class="nav-bar-icons" data-section="archive">
+        <img class="small-logo" src="images/archive.png" alt="">
+        <p>ARCHIVE</p>
+      </div>      
     </div>
   </nav>
 
   <!-- Top Bar -->
   <nav class="top-bar">
     <div class="info-1">
-      <div class="info"><img class="small-logo-3" src="images/reload.png" alt=""></div>
       <div class="profile">
-        <div class="profile-info">
-          <p class="para">@user-name</p>
-          <p class="para">user-name1@gmail.com</p>
-        </div>
-        <img class="profile-pic" src="images/prf.png" alt="profile">
-      </div>
+    <div class="profile-info">
+        <p class="para" id="topName"></p>
+        <p class="para" id="topEmail"></p>
+    </div>
+
+    <img class="profile-pic" src="images/prf.png" alt="profile">
+
+    <div class="info logout-wrapper">
+        <img class="logo-logout" src="images/logout.png" alt="">
+        <span class="logout-tooltip">Logout</span>
+    </div>
+</div>
     </div>
   </nav>
 
@@ -52,7 +61,8 @@
   <div id="main-content">
     <section id="dashboard-section">
       <div class="date-div">
-        <p class="date"><span class="date-num">04</span> Nov 2025</p>
+        <p class="date-sub" id="dateDisplay"></p>
+        <p class="greet-apple" id="greeting"></p>
         <div class="middle-part">
           <div class="box-1">
             <p class="title-middle">Daily Summary</p>
@@ -81,6 +91,12 @@
           <p class="title-middle">Habits Overview</p>
           <canvas id="habitsPie"></canvas>
         </div>
+
+        <div class="chart-container reminders-mini">
+          <p class="title-middle">Reminders</p>
+          <ul id="dashboardReminderList" class="reminder-mini-list"></ul>
+        </div>
+        
       </div>
     </section>
   </div>  
@@ -89,32 +105,39 @@
   <div id="todoModal" class="modal hidden">
     <div class="modal-card">
       <h2 id="todoModalTitle">Add Task</h2>
+  
       <label class="form-row">
         <span>Task Name</span>
         <input id="taskName" type="text" placeholder="e.g. Complete assignment">
       </label>
+  
       <label class="form-row">
         <span>Due Date</span>
         <input id="taskDueDate" type="date">
       </label>
-      <label class="form-row">
-        <span>Priority</span>
-        <select id="taskPriority">
-          <option value="Low">Low</option>
-          <option value="Medium" selected>Medium</option>
-          <option value="High">High</option>
-        </select>
-      </label>
+  
       <label class="form-row">
         <span>Focus Time (minutes)</span>
         <input id="taskTime" type="number" min="0" placeholder="e.g. 45">
       </label>
+  
+      <label class="form-row">
+        <span>Category</span>
+        <select id="taskMatrixType">
+          <option value="q1">Urgent + Important</option>
+          <option value="q2">Not Urgent + Important</option>
+          <option value="q3">Urgent + Not Important</option>
+          <option value="q4">Not Urgent + Not Important</option>
+        </select>
+      </label>
+  
       <div class="modal-actions">
         <button id="cancelTask" class="btn ghost">Cancel</button>
         <button id="saveTask" class="btn">Save</button>
       </div>
     </div>
   </div>
+  
 
   <!-- Habit Modal -->
 <div id="habitModal" class="modal hidden">
