@@ -1,53 +1,68 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.querySelector("#loginForm");
-  const emailInput = document.querySelector("#email");
-  const passwordInput = document.querySelector("#password");
-  const messageBox = document.querySelector("#message");
+// LOGIN handler — paste/replace into js/login.js
+// Uses your Render URL as API_BASE
+const API_BASE = "https://streaks-c41m.onrender.com";
 
-  form.addEventListener("submit", async (e) => {
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('loginForm');
+  const msg = document.getElementById('message');
+
+  if (!form) return console.warn('loginForm not found in DOM');
+
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
-
-    const email = emailInput.value.trim();
-    const password = passwordInput.value.trim();
+    msg.textContent = '';
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
 
     if (!email || !password) {
-      showMessage("Please fill out all fields.", "error");
+      msg.textContent = 'Please enter email and password';
       return;
     }
 
     try {
-      const res = await fetch("http://localhost:5000/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        showMessage(data.msg || "Invalid credentials!", "error");
+        // try to show server message if provided
+        const errText = await res.text().catch(() => '');
+        let serverMsg = errText;
+        try {
+          const json = JSON.parse(errText || '{}');
+          serverMsg = json.message || json.error || JSON.stringify(json);
+        } catch (_) {}
+        msg.textContent = serverMsg || `Login failed (${res.status})`;
+        console.error('Login failed response:', res.status, errText);
         return;
       }
 
-      // Save token + user info
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("userEmail", data.email);
-      localStorage.setItem("userName", data.name);
+      const data = await res.json();
+      console.log('login response:', data);
 
-      showMessage("Login successful! Redirecting...", "success");
+      // Normalize token & user info from common server shapes
+      const token = data.token || data.authToken || data.accessToken || (data.user && data.user.token) || '';
+      // username may be directly present or nested under user
+      const username = data.username || data.name || (data.user && (data.user.name || data.user.username)) || '';
+      const useremail = data.email || (data.user && data.user.email) || email; // fallback to submitted email
 
-      setTimeout(() => {
-        window.location.href = "main.html";
-      }, 1000);
+      if (!token) {
+        // still proceed if server doesn't return token (dev servers sometimes do session cookie)
+        console.warn('No token in login response — continuing but dashboard may require token.');
+      }
 
+      // IMPORTANT: use lowercase keys to match your main.js (friend's UI)
+      if (token) localStorage.setItem('token', token);
+      if (username) localStorage.setItem('username', username);
+      if (useremail) localStorage.setItem('useremail', useremail);
+
+      // navigate to dashboard index (adjust if your main page filename differs)
+      window.location.href = 'index.html';
     } catch (err) {
-      console.error(err);
-      showMessage("Server error. Try again later.", "error");
+      console.error('Login error:', err);
+      msg.textContent = 'Network error. Check your backend or internet connection.';
     }
   });
-
-  function showMessage(text, type) {
-    messageBox.textContent = text;
-    messageBox.style.color = type === "success" ? "#05c26a" : "lightcoral";
-  }
 });
