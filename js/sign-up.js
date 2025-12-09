@@ -30,10 +30,11 @@ signUpForm.addEventListener('submit', async (e) => {
     messageEl.style.color = '#05c26a';
 
     setTimeout(() => {
-      window.location.href = 'login.html';
+      window.location.href = '/Streaks/login.html';
     }, 2000);
   } catch (error) {
     messageEl.textContent = error.message || 'Sign-up failed. Try again.';
     messageEl.style.color = '#ff6b6b';
   }
 });
+
