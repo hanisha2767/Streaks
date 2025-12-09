@@ -1974,3 +1974,56 @@ body {
   font-size: 1.05rem;
   opacity: 0.8;
 }
+
+/* ========== DASHBOARD LAYOUT FIX ========== */
+
+.section {
+  display: none;
+  margin-left: 280px;      /* pushes content right of sidebar */
+  margin-top: 140px;       /* pushes content below top bar */
+  padding: 20px;
+  color: #E6E8EC;
+}
+
+.section.active {
+  display: block;
+}
+
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.stats-container {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.stat-card {
+  background: #3a4150;
+  padding: 20px;
+  width: 220px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  text-align: center;
+}
+
+.stat-card h3 {
+  font-size: 42px;
+  color: #05c26a;
+  margin: 10px 0 0;
+}
+
+.stat-card p {
+  margin: 0;
+  font-size: 16px;
+  color: #A6ADBA;
+}
+
+.date-text {
+  font-size: 36px;
+  font-weight: 600;
+  color: #E6E8EC;
+}
