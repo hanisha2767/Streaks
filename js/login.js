@@ -17,10 +17,11 @@ loginForm.addEventListener('submit', async (e) => {
     messageEl.style.color = '#05c26a';
 
     setTimeout(() => {
-      window.location.href = 'welcome.html';
+      window.location.href = '/Streaks/welcome.html';
     }, 1000);
   } catch (error) {
     messageEl.textContent = error.message || 'Login failed. Check your credentials.';
     messageEl.style.color = '#ff6b6b';
   }
 });
+
