@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Welcome</title>
+
+  <style>
+    body {
+      background: #2a303c;
+      color: #E6E8EC;
+      font-family: "Roboto", sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      padding: 20px; /* added */
+    }
+  
+    .box {
+      background: #3a4150;
+      padding: 40px 32px;  /* 🔥 increased padding */
+      width: 380px;        /* slightly wider */
+      border-radius: 16px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.4);
+      text-align: center;   /* centers text */
+    }
+  
+    h2 {
+      margin: 0 0 12px;   /* better spacing */
+      font-size: 24px;
+    }
+  
+    p {
+      margin: 0 0 25px;   /* more breathing room */
+      font-size: 15px;
+      opacity: 0.9;
+    }
+  
+    input {
+      width: 95%;
+      padding: 8px;           /* bigger */
+      background: #2a303c;
+      border: 1px solid #434a59; /* light subtle border */
+      border-radius: 8px;
+      color: #fff;
+      margin-bottom: 20px;     /* more space below */
+      font-size: 15px;
+    }
+  
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #05c26a;
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 17px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+  
+    button:hover {
+      background: #04a55c;
+    }
+  </style>
+  
+</head>
+<body>
+
+  <div class="box">
+    <h2>Welcome 👋</h2>
+    <p>Enter your name to continue:</p>
+
+    <input id="nameInput" type="text" placeholder="Your name">
+
+    <button onclick="saveInfo()">Continue</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      await new Promise(res => setTimeout(res, 300));
+      const user = await getCurrentUser();
+      if (!user) {
+        window.location.href = 'login.html';
+        return;
+      }
+    });
+
+    function saveInfo() {
+      const name = document.getElementById("nameInput").value.trim();
+      if (!name) return alert("Please enter your name!");
+
+      localStorage.setItem("username", name);
+
+      window.location.href = "index.html";
+    }
+  </script>
+
+</body>
+</html>
