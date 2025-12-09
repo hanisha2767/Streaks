@@ -10,6 +10,7 @@
 </head>
 <body>
 
+  <!-- Sidebar -->
   <nav class="side-bar">
     <div>
       <div class="name">
@@ -44,6 +45,7 @@
     </div>
   </nav>
 
+  <!-- Top Bar -->
   <nav class="top-bar">
     <div class="info-1">
       <div class="profile">
@@ -60,7 +62,31 @@
     </div>
   </nav>
 
-  <div id="main-content"></div>
+  <div id="main-content">
+    <div id="dashboard-section" class="section active">
+      <h2 id="currentDate" class="date-text"></h2>
+
+      <div class="stats-container">
+       <div class="stat-card">
+         <p>Total Habits</p>
+         <h3 id="habitCount">0</h3>
+       </div>
+       <div class="stat-card">
+         <p>Tasks Due Today</p>
+         <h3 id="taskCount">0</h3>
+       </div>
+       <div class="stat-card">
+         <p>Upcoming Reminders</p>
+         <h3 id="reminderCount">0</h3>
+       </div>
+      </div>
+
+      <canvas id="statsChart"></canvas>
+    </div>
+
+  </div>
+
+  <!-- Modals here (unchanged) -->
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
