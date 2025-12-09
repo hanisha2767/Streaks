@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const user = await getCurrentUser();
 
   if (!user) {
-    window.location.href = 'login.html';
+    window.location.href = '/Streaks/login.html';
     return;
   }
 
@@ -233,7 +233,7 @@ function setupEventListeners() {
 
   document.querySelector('.logout-wrapper').addEventListener('click', async () => {
     await logout();
-    window.location.href = 'login.html';
+    window.location.href = '/Streaks/login.html';
   });
 
   setupTaskModal();
@@ -650,3 +650,4 @@ async function deleteReminder(reminderId) {
     }
   }
 }
+
