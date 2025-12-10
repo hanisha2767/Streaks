@@ -14,40 +14,35 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
-      padding: 20px; /* added */
+      padding: 20px;
     }
-  
+
     .box {
       background: #3a4150;
-      padding: 40px 32px;  /* 🔥 increased padding */
-      width: 380px;        /* slightly wider */
+      padding: 40px 32px;
+      width: 380px;
       border-radius: 16px;
       box-shadow: 0 0 20px rgba(0,0,0,0.4);
-      text-align: center;   /* centers text */
+      text-align: center;
     }
-  
+
     h2 {
-      margin: 0 0 12px;   /* better spacing */
-      font-size: 24px;
+      margin: 0 0 12px;
+      font-size: 26px;
+      font-weight: 600;
     }
-  
-    p {
-      margin: 0 0 25px;   /* more breathing room */
-      font-size: 15px;
-      opacity: 0.9;
+
+    .user-info {
+      margin: 10px 0 20px;
+      font-size: 16px;
+      opacity: 0.95;
     }
-  
-    input {
-      width: 95%;
-      padding: 8px;           /* bigger */
-      background: #2a303c;
-      border: 1px solid #434a59; /* light subtle border */
-      border-radius: 8px;
-      color: #fff;
-      margin-bottom: 20px;     /* more space below */
-      font-size: 15px;
+
+    .tag {
+      color: #05c26a;
+      font-weight: 600;
     }
-  
+
     button {
       width: 100%;
       padding: 14px;
@@ -58,47 +53,64 @@
       font-size: 17px;
       font-weight: 500;
       cursor: pointer;
+      margin-top: 10px;
     }
-  
+
     button:hover {
       background: #04a55c;
     }
   </style>
-  
 </head>
+
 <body>
 
   <div class="box">
     <h2>Welcome 👋</h2>
-    <p>Enter your name to continue:</p>
 
-    <input id="nameInput" type="text" placeholder="Your name">
+    <p class="user-info">
+      Logged in as:<br>
+      <span id="welcomeUsername" class="tag">@username</span><br>
+      <span id="welcomeEmail"></span>
+    </p>
 
-    <button onclick="saveInfo()">Continue</button>
+    <button onclick="goToDashboard()">Continue</button>
   </div>
 
+  <!-- SUPABASE -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/auth.js"></script>
+
   <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      await new Promise(res => setTimeout(res, 300));
+    const supabase = window.supabase.createClient(
+      "https://nfyopcyojsgsxbcooqvd.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5meW9wY3lvanNnc3hiY29vcXZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxODY3NDYsImV4cCI6MjA4MDc2Mjc0Nn0.mOkugQNFKANu3u4towFq2K2jTcCUFds-RJ3R1ejzpZA"
+    );
+  </script>
+
+  <script src="/Streaks/js/auth.js"></script>
+
+  <script>
+    async function loadUser() {
       const user = await getCurrentUser();
       if (!user) {
-        window.location.href = 'login.html';
+        window.location.href = "/Streaks/login.html";
         return;
       }
-    });
 
-    function saveInfo() {
-      const name = document.getElementById("nameInput").value.trim();
-      if (!name) return alert("Please enter your name!");
+      const profile = await getUserProfile();
 
-      localStorage.setItem("username", name);
+      document.getElementById("welcomeUsername").textContent =
+        profile?.username ? "@" + profile.username : "@user";
 
-      window.location.href = "index.html";
+      document.getElementById("welcomeEmail").textContent =
+        profile?.email || user.email;
     }
+
+    function goToDashboard() {
+      window.location.href = "/Streaks/index.html";
+    }
+
+    loadUser();
   </script>
 
 </body>
 </html>
-
