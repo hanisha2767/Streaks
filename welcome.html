@@ -1,116 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Welcome</title>
-
-  <style>
-    body {
-      background: #2a303c;
-      color: #E6E8EC;
-      font-family: "Roboto", sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      padding: 20px;
-    }
-
-    .box {
-      background: #3a4150;
-      padding: 40px 32px;
-      width: 380px;
-      border-radius: 16px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.4);
-      text-align: center;
-    }
-
-    h2 {
-      margin: 0 0 12px;
-      font-size: 26px;
-      font-weight: 600;
-    }
-
-    .user-info {
-      margin: 10px 0 20px;
-      font-size: 16px;
-      opacity: 0.95;
-    }
-
-    .tag {
-      color: #05c26a;
-      font-weight: 600;
-    }
-
-    button {
-      width: 100%;
-      padding: 14px;
-      background: #05c26a;
-      border: none;
-      border-radius: 10px;
-      color: #fff;
-      font-size: 17px;
-      font-weight: 500;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-
-    button:hover {
-      background: #04a55c;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome – Streaks</title>
+  <link rel="stylesheet" href="css/styles-sign-up.css">
+  <link rel="icon" href="images/logo1.png">
 </head>
 
 <body>
 
-  <div class="box">
-    <h2>Welcome 👋</h2>
-
-    <p class="user-info">
-      Logged in as:<br>
-      <span id="welcomeUsername" class="tag">@username</span><br>
-      <span id="welcomeEmail"></span>
-    </p>
-
-    <button onclick="goToDashboard()">Continue</button>
+  <div class="container">
+    <h1 id="welcomeUser">Welcome!</h1>
+    <p class="small">Redirecting to Dashboard...</p>
   </div>
 
-  <!-- SUPABASE -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <script>
-    const supabase = window.supabase.createClient(
-      "https://nfyopcyojsgsxbcooqvd.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5meW9wY3lvanNnc3hiY29vcXZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxODY3NDYsImV4cCI6MjA4MDc2Mjc0Nn0.mOkugQNFKANu3u4towFq2K2jTcCUFds-RJ3R1ejzpZA"
-    );
-  </script>
-
-  <script src="/Streaks/js/auth.js"></script>
-
-  <script>
-    async function loadUser() {
-      const user = await getCurrentUser();
-      if (!user) {
-        window.location.href = "/Streaks/login.html";
-        return;
-      }
-
-      const profile = await getUserProfile();
-
-      document.getElementById("welcomeUsername").textContent =
-        profile?.username ? "@" + profile.username : "@user";
-
-      document.getElementById("welcomeEmail").textContent =
-        profile?.email || user.email;
-    }
-
-    function goToDashboard() {
-      window.location.href = "/Streaks/index.html";
-    }
-
-    loadUser();
-  </script>
+  <script src="js/auth.js"></script>
 
 </body>
 </html>
