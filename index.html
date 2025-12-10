@@ -1,265 +1,138 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Streaks Dashboard</title>
 
+  <!-- CSS -->
   <link rel="stylesheet" href="css/styles-main.css">
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="icon" type="image/png" href="images/logo1.png">
 </head>
 
 <body>
 
-  <!-- SIDEBAR -->
-  <div class="side-bar">
+  <!-- Sidebar -->
+  <nav class="side-bar">
     <div class="name">
-      <img class="icon-logo" src="images/logo.png">
+      <img src="images/logo1.png" class="icon-logo">
+      <img src="images/title.png" class="title">
     </div>
 
-    <div id="navDashboard" class="nav-bar-icons active">
-      <img class="small-logo" src="images/dashboard.png">
-      <p>Dashboard</p>
+    <div class="nav-bar-icons active" onclick="showSection('dashboard-section')">
+      <img src="images/nav-dashboard.png" class="small-logo">
+      <p>DASHBOARD</p>
     </div>
 
-    <div id="navHabits" class="nav-bar-icons">
-      <img class="small-logo" src="images/habits.png">
-      <p>Habits</p>
+    <div class="nav-bar-icons" onclick="showSection('habits-section')">
+      <img src="images/nav-habits.png" class="small-logo">
+      <p>HABITS</p>
     </div>
 
-    <div id="navTodo" class="nav-bar-icons">
-      <img class="small-logo" src="images/todo.png">
-      <p>To-Do</p>
+    <div class="nav-bar-icons" onclick="showSection('todo-section')">
+      <img src="images/nav-todo.png" class="small-logo">
+      <p>TO DO LIST</p>
     </div>
 
-    <div id="navReminders" class="nav-bar-icons">
-      <img class="small-logo" src="images/reminders.png">
-      <p>Reminders</p>
+    <div class="nav-bar-icons" onclick="showSection('reminders-section')">
+      <img src="images/nav-reminder.png" class="small-logo">
+      <p>REMAINDERS</p>
     </div>
 
-    <div id="navArchive" class="nav-bar-icons">
-      <img class="small-logo" src="images/archive.png">
-      <p>Archive</p>
+    <div class="nav-bar-icons" onclick="showSection('archive-section')">
+      <img src="images/nav-archive.png" class="small-logo">
+      <p>ARCHIVE</p>
     </div>
-  </div>
+  </nav>
 
-  <!-- TOP BAR -->
+  <!-- Top Bar -->
   <div class="top-bar">
     <div class="info">
-      <p class="greeting-text">Hi, <span id="topName">@user</span></p>
-    </div>
+      <div class="info-1">
+        <p class="para">@user</p>
+        <p class="para">user@gmail.com</p>
+      </div>
 
-    <div class="logout-wrapper" onclick="logoutUser()">
-      <img class="logo-logout" src="images/logout.png">
-      <div class="logout-tooltip">Logout</div>
+      <img src="images/profile.png" class="profile-pic">
+      <div class="logout-wrapper" onclick="signOutUser()">
+        <img src="images/logout.png" class="logo-logout">
+        <span class="logout-tooltip">Logout</span>
+      </div>
     </div>
   </div>
 
-  <!-- MAIN CONTENT CONTAINER -->
+  <!-- MAIN CONTENT -->
   <div id="main-content">
 
-    <!-- ============================
-         DASHBOARD SECTION
-    ============================== -->
-    <section id="dashboard-section" class="section">
-      <div class="date-div">
-        <p class="date">
-          <span class="date-num" id="dayNum">12</span> <span id="dayName">Monday</span>
-        </p>
-      </div>
+    <!-- DASHBOARD -->
+    <div id="dashboard-section" class="section active">
+      <h2 id="currentDate" class="date-text"></h2>
 
-      <div class="middle-part">
-        <div class="box-1">
-          <p class="title-middle">Habits</p>
-          <p class="middle-p">Total: <span id="dashHabits">0</span></p>
+      <div class="stats-container">
+        <div class="stat-card">
+          <p>Total Habits</p>
+          <h3 id="habitCount">0</h3>
         </div>
 
-        <div class="box-1">
-          <p class="title-middle">Tasks</p>
-          <p class="middle-p">Total: <span id="dashTasks">0</span></p>
+        <div class="stat-card">
+          <p>Tasks Due Today</p>
+          <h3 id="taskCount">0</h3>
         </div>
 
-        <div class="box-1">
-          <p class="title-middle">Reminders</p>
-          <p class="middle-p">Total: <span id="dashRem">0</span></p>
+        <div class="stat-card">
+          <p>Upcoming Reminders</p>
+          <h3 id="reminderCount">0</h3>
         </div>
       </div>
 
-      <!-- CHARTS -->
-      <div class="charts-grid">
-        <div class="chart-container">
-          <h3 class="title-middle">Task Priority Breakdown</h3>
-          <canvas id="priorityChart"></canvas>
-        </div>
+      <canvas id="statsChart"></canvas>
+    </div>
 
-        <div class="chart-container">
-          <h3 class="title-middle">Habits Completed</h3>
-          <canvas id="habitsPie"></canvas>
-        </div>
-
-        <div class="chart-container reminders-mini">
-          <h3 class="title-middle">Upcoming Reminders</h3>
-          <ul id="upcomingReminders" class="reminder-mini-list"></ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============================
-         HABITS PAGE
-    ============================== -->
-    <section id="habits-section" class="section hidden">
+    <!-- HABITS -->
+    <div id="habits-section" class="section">
+      <h2>Habits</h2>
       <div class="habits-card">
         <div class="card-header">
           <h3>Your Habits</h3>
           <button class="btn" onclick="openHabitModal()">+ Add Habit</button>
         </div>
 
-        <p class="habits-date" id="habitsDate"></p>
-
-        <!-- HABITS LIST -->
-        <ul id="habitsList" class="habit-list"></ul>
+        <ul id="habitList" class="habit-list"></ul>
       </div>
-    </section>
-    <!-- ============================
-         TODO PAGE
-    ============================== -->
-    <section id="todo-section" class="section hidden">
+    </div>
+
+    <!-- TODO -->
+    <div id="todo-section" class="section">
+      <h2>Your Tasks</h2>
       <div class="todo-page">
-        <h1 class="todo-title">To-Do Tasks</h1>
-
-        <!-- Search + Filters -->
         <div class="todo-actions">
-          <input type="text" id="todoSearch" class="todo-search" placeholder="Search tasks..." oninput="searchTasks()">
-
-          <div class="todo-filters">
-            <button class="todo-filter" onclick="filterTasks('all')" id="filterAll">All</button>
-            <button class="todo-filter" onclick="filterTasks('High')" id="filterHigh">High</button>
-            <button class="todo-filter" onclick="filterTasks('Medium')" id="filterMedium">Medium</button>
-            <button class="todo-filter" onclick="filterTasks('Low')" id="filterLow">Low</button>
-          </div>
+          <input type="text" id="searchTasks" class="todo-search" placeholder="Search tasks...">
+          <button class="btn" onclick="openTaskModal()">+ Add Task</button>
         </div>
 
-        <!-- TASK GRID -->
-        <div id="todoList" class="task-grid"></div>
-
-        <!-- Floating Add Button -->
-        <button class="floating-add-btn" onclick="openTaskModal()">+</button>
-      </div>
-    </section>
-
-    <!-- ============================
-         REMINDERS PAGE
-    ============================== -->
-    <section id="reminders-section" class="section hidden">
-      <div class="reminders-page">
-        <div class="reminders-header">
-          <h1>Reminders</h1>
-          <button id="newReminderBtn" onclick="openReminderModal()">+ New Reminder</button>
-        </div>
-
-        <!-- REMINDER LIST -->
-        <ul id="reminderList" class="reminder-list"></ul>
-      </div>
-    </section>
-
-    <!-- ============================
-         ARCHIVE PAGE
-    ============================== -->
-    <section id="archive-section" class="section hidden">
-      <div class="archive-page">
-        <h1 class="todo-title">Archived Items</h1>
-        <div id="archiveList"></div>
-      </div>
-    </section>
-
-  </div><!-- END MAIN CONTENT -->
-
-  <!-- ============================
-        HABIT MODAL
-  ============================== -->
-  <div id="habitModal" class="modal hidden">
-    <div class="modal-card">
-      <h2>Add Habit</h2>
-
-      <div class="form-row">
-        <label>Habit Name</label>
-        <input id="habitNameInput" type="text" placeholder="Drink Water">
-      </div>
-
-      <div class="modal-actions">
-        <button class="btn ghost" onclick="closeHabitModal()">Cancel</button>
-        <button class="btn" onclick="saveHabit()">Save</button>
+        <div id="taskGrid" class="task-grid"></div>
       </div>
     </div>
-  </div>
 
-  <!-- ============================
-        TASK MODAL
-  ============================== -->
-  <div id="taskModal" class="modal hidden">
-    <div class="modal-card">
-      <h2>Add Task</h2>
-
-      <div class="form-row">
-        <label>Task Name</label>
-        <input id="taskNameInput" type="text" placeholder="Study DSA">
-      </div>
-
-      <div class="form-row">
-        <label>Due Date</label>
-        <input id="taskDueDate" type="date">
-      </div>
-
-      <div class="form-row">
-        <label>Priority</label>
-        <select id="taskPriority">
-          <option>High</option>
-          <option>Medium</option>
-          <option>Low</option>
-        </select>
-      </div>
-
-      <div class="modal-actions">
-        <button class="btn ghost" onclick="closeTaskModal()">Cancel</button>
-        <button class="btn" onclick="saveTask()">Save</button>
-      </div>
+    <!-- REMINDERS -->
+    <div id="reminders-section" class="section">
+      <h2>Reminders</h2>
+      <ul id="reminderList" class="reminder-list"></ul>
+      <button id="newReminderBtn" onclick="openReminderModal()">+ Add Reminder</button>
     </div>
-  </div>
 
-  <!-- ============================
-        REMINDER MODAL
-  ============================== -->
-  <div id="reminderModal" class="modal hidden">
-    <div class="modal-card">
-      <h2>New Reminder</h2>
-
-      <div class="form-row">
-        <label>Title</label>
-        <input id="reminderTitle" type="text" placeholder="Pay electricity bill">
-      </div>
-
-      <div class="form-row">
-        <label>Date</label>
-        <input id="reminderDate" type="date">
-      </div>
-
-      <div class="form-row">
-        <label>Time</label>
-        <input id="reminderTime" type="time">
-      </div>
-
-      <div class="modal-actions">
-        <button class="btn ghost" onclick="closeReminderModal()">Cancel</button>
-        <button class="btn" onclick="saveReminder()">Save</button>
-      </div>
+    <!-- ARCHIVE -->
+    <div id="archive-section" class="section">
+      <h2>Archive</h2>
+      <div id="archiveList"></div>
     </div>
+
   </div>
 
-  <!-- ============================
-        SCRIPTS
-  ============================== -->
+  <!-- JS -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script src="js/auth.js"></script>
   <script src="js/main.js"></script>
 
