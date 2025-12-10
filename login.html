@@ -1,55 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login - Streaks</title>
 
-  <link rel="icon" type="image/png" href="images/logo1.png">
-  <link rel="stylesheet" href="css/styles-sign-up.css">
+  <!-- CSS -->
+  <link rel="stylesheet" href="/Streaks/styles-sign-up.css" />
+  <link rel="icon" type="image/png" href="/Streaks/images/logo1.png" />
 </head>
 
 <body>
+  <div class="container">
 
-  <nav>
-    <div class="con">
-      <div class="name">
-        <img class="icon-logo" src="images/logo.png">
-        <img class="title" src="images/title.png">
+    <div class="left-side">
+      <img src="/Streaks/images/logo1.png" class="logo" />
+      <h1 class="app-title">Streaks</h1>
+      <p class="tagline">Track your habits. Build your life.</p>
+    </div>
+
+    <div class="right-side">
+      <h2 class="title">Welcome Back</h2>
+      <p class="subtitle">Login to continue your progress</p>
+
+      <div class="form-group">
+        <label>Email</label>
+        <input id="loginEmail" type="email" placeholder="Enter your email" />
       </div>
-    </div>
-  </nav>
 
-  <div class="middle">
-    <div class="left-middle">
-      <p class="tag-line">
-        <span style="color:#05c26a">Welcome back!</span><br>
-        Log in to continue your journey.
-      </p>
-    </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input id="loginPassword" type="password" placeholder="Enter password" />
+      </div>
 
-    <div class="right-middle">
-      <p class="sign-up">Log In</p>
+      <button class="btn" onclick="login()">Login</button>
 
-      <form id="loginForm">
-        <input id="email" class="input-box" type="email" placeholder="Email" required>
-        <input id="password" class="input-box" type="password" placeholder="Password" required>
-        <button type="submit" class="continue">Log In</button>
-      </form>
-
-      <p id="message" class="message"></p>
-
-      <p style="color:white; margin-top:10px;">
-        Don’t have an account?
-        <a href="sign-up.html" style="color:#05c26a;">Sign up</a>
+      <p class="switch-text">
+        Don't have an account?
+        <a href="/Streaks/sign-up.html">Create one</a>
       </p>
     </div>
   </div>
 
+  <!-- SUPABASE -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/login.js"></script>
+
+  <script>
+    const supabase = window.supabase.createClient(
+      "https://nfyopcyojsgsxbcooqvd.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5meW9wY3lvanNnc3hiY29vcXZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxODY3NDYsImV4cCI6MjA4MDc2Mjc0Nn0.mOkugQNFKANu3u4towFq2K2jTcCUFds-RJ3R1ejzpZA"
+    );
+  </script>
+
+  <!-- JS -->
+  <script src="/Streaks/js/auth.js"></script>
+  <script src="/Streaks/js/login.js"></script>
 
 </body>
 </html>
-
