@@ -1,92 +1,144 @@
 import { useEffect, useState } from "react";
-import {
-  getReminders,
-  addReminder,
-  completeReminder,
-  deleteReminder,
-  updateReminder
-} from "../api";
+
+function formatCoolDate(dateStr) {
+  if (!dateStr) return "--";
+
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+  });
+}
+
+function formatTime12(timeStr) {
+  if (!timeStr) return "Anytime";
+
+  const [h, m] = timeStr.split(":");
+  const date = new Date();
+  date.setHours(h, m);
+
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
 
 function Reminders() {
   const [reminders, setReminders] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [error, setError] = useState("");
+
   const [newReminder, setNewReminder] = useState({
     title: "",
-    reminder_date: "",
-    reminder_time: "",
+    date: "",
+    time: "",
   });
-  const [editingId, setEditingId] = useState(null);
 
-  /* LOAD REMINDERS FROM BACKEND */
-  useEffect(() => {
-    loadReminders();
-  }, []);
+  const today = new Date().toISOString().split("T")[0];
+  const token = localStorage.getItem("token");
 
-  async function loadReminders() {
+  /* ================= FETCH REMINDERS ================= */
+  const fetchReminders = async () => {
+    if (!token) return;
+
     try {
-      const data = await getReminders();
+      const res = await fetch("http://localhost:5000/reminders", {
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      });
+
+      const data = await res.json();
       setReminders(data);
     } catch (err) {
-      console.error("Load reminders error:", err.message);
+      console.error("Failed to fetch reminders", err);
     }
-  }
-
-  /* CHECK OVERDUE */
-  const isOverdue = (r) => {
-    if (!r.reminder_date) return false;
-    const now = new Date();
-    const time = r.reminder_time || "00:00";
-    const reminderTime = new Date(`${r.reminder_date}T${time}`);
-    return reminderTime < now && !r.completed;
   };
 
-  /* ADD REMINDER */
-  async function handleSaveReminder() {
-    if (!newReminder.title || !newReminder.reminder_date) return;
+  useEffect(() => {
+    fetchReminders();
+  }, []);
+
+  /* ================= FILTER ================= */
+  const visibleReminders = reminders.filter(
+    (r) => !r.deleted && r.date >= today
+  );
+
+  /* ================= DELETE ================= */
+  const deleteReminder = async (id) => {
+    try {
+      await fetch(`http://localhost:5000/reminders/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      });
+
+      fetchReminders();
+    } catch (err) {
+      console.error("Delete failed", err);
+    }
+  };
+
+  /* ================= EDIT ================= */
+  const editReminder = (r) => {
+    setEditingId(r.id);
+    setNewReminder({
+      title: r.title,
+      date: r.date,
+      time: r.time || "",
+    });
+    setError("");
+    setShowModal(true);
+  };
+
+  /* ================= SAVE (ADD / EDIT) ================= */
+  const handleSave = async () => {
+    if (!newReminder.title.trim()) {
+      setError("Title is required");
+      return;
+    }
+
+    if (!newReminder.date) {
+      setError("Date is required");
+      return;
+    }
 
     try {
       if (editingId) {
-        await updateReminder(editingId, newReminder);
+        // EDIT
+        await fetch(`http://localhost:5000/reminders/${editingId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token,
+          },
+          body: JSON.stringify(newReminder),
+        });
       } else {
-         await addReminder(newReminder);
+        // ADD
+        await fetch("http://localhost:5000/reminders", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token,
+          },
+          body: JSON.stringify(newReminder),
+        });
       }
 
-      setNewReminder({
-        title: "",
-        reminder_date: "",
-        reminder_time: "",
-      });
+      fetchReminders();
+      setNewReminder({ title: "", date: "", time: "" });
       setEditingId(null);
+      setError("");
       setShowModal(false);
-      loadReminders();
     } catch (err) {
-       console.error("Save reminder error:", err.message);
+      console.error("Save failed", err);
+      setError("Failed to save reminder");
     }
-  }
-
-
-  /* COMPLETE REMINDER */
-  async function handleComplete(id) {
-    try {
-      await completeReminder(id);
-      loadReminders();
-    } catch (err) {
-      console.error("Complete reminder error:", err.message);
-    }
-  }
-
-  async function handleDelete(id) {
-    const confirm = window.confirm("Delete this reminder?");
-    if (!confirm) return;
-
-    try {
-      await deleteReminder(id);
-      loadReminders();
-    } catch (err) {
-       console.error("Delete reminder error:", err.message);
-      }
-  }
-
+  };
 
   return (
     <div className="reminders-page">
@@ -94,60 +146,42 @@ function Reminders() {
         <h1>Reminders</h1>
         <button
           className="matrix-add-btn"
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            setEditingId(null);
+            setNewReminder({ title: "", date: "", time: "" });
+            setError("");
+            setShowModal(true);
+          }}
         >
           + New Reminder
         </button>
       </div>
 
       <ul className="reminder-list">
-        {reminders.length === 0 && <p>No reminders</p>}
+        {visibleReminders.length === 0 && <p>No upcoming reminders</p>}
 
-        {reminders.map((r) => (
-          <li
-            key={r.id}
-            className={`reminder-item ${isOverdue(r) ? "overdue" : ""} ${
-              r.completed ? "done" : ""
-            }`}
-          >
+        {visibleReminders.map((r) => (
+          <li key={r.id} className="reminder-item">
             <div className="reminder-left">
-              <input
-                type="checkbox"
-                checked={r.completed}
-                onChange={() => handleComplete(r.id)}
-              />
-
-              <div>
-                <p className="reminder-title">{r.title}</p>
-                <span className="reminder-meta">
-                  📅 {r.reminder_date}
-                  {r.reminder_time && ` ⏰ ${r.reminder_time}`}
+              <p className="reminder-title">{r.title}</p>
+              <span className="reminder-meta">
+                <span className="reminder-date">
+                  {formatCoolDate(r.date)}
                 </span>
-              </div>
+                <span className="reminder-time">
+                  ⏰ {formatTime12(r.time)}
+                </span>
+              </span>
             </div>
 
-            <span
-             className="delete"
-             onClick={() => handleDelete(r.id)}
-              >
-             Delete
-            </span>
-
-            <span
-             className="edit"
-             onClick={() => {
-                setEditingId(r.id);
-                setNewReminder({
-                 title: r.title,
-                 reminder_date: r.reminder_date,
-                 reminder_time: r.reminder_time || "",
-                });
-                setShowModal(true);
-              }}
-             >
-             Edit
-            </span>
-
+            <div className="reminder-actions">
+              <span className="edit_rem" onClick={() => editReminder(r)}>
+                Edit
+              </span>
+              <span className="delete" onClick={() => deleteReminder(r.id)}>
+                Delete
+              </span>
+            </div>
           </li>
         ))}
       </ul>
@@ -159,29 +193,23 @@ function Reminders() {
             <h2>{editingId ? "Edit Reminder" : "New Reminder"}</h2>
 
             <div className="form-row">
-              <label>Title</label>
+              <label>Title *</label>
               <input
                 type="text"
                 value={newReminder.title}
                 onChange={(e) =>
-                  setNewReminder({
-                    ...newReminder,
-                    title: e.target.value,
-                  })
+                  setNewReminder({ ...newReminder, title: e.target.value })
                 }
               />
             </div>
 
             <div className="form-row">
-              <label>Date</label>
+              <label>Date *</label>
               <input
                 type="date"
-                value={newReminder.reminder_date}
+                value={newReminder.date}
                 onChange={(e) =>
-                  setNewReminder({
-                    ...newReminder,
-                    reminder_date: e.target.value,
-                  })
+                  setNewReminder({ ...newReminder, date: e.target.value })
                 }
               />
             </div>
@@ -190,15 +218,18 @@ function Reminders() {
               <label>Time</label>
               <input
                 type="time"
-                value={newReminder.reminder_time}
+                value={newReminder.time}
                 onChange={(e) =>
-                  setNewReminder({
-                    ...newReminder,
-                    reminder_time: e.target.value,
-                  })
+                  setNewReminder({ ...newReminder, time: e.target.value })
                 }
               />
             </div>
+
+            {error && (
+              <p style={{ color: "#ff5252", fontSize: "14px" }}>
+                {error}
+              </p>
+            )}
 
             <div className="modal-actions">
               <button
@@ -207,11 +238,7 @@ function Reminders() {
               >
                 Cancel
               </button>
-
-              <button
-                className="save-btn"
-                onClick={handleSaveReminder}
-              >
+              <button className="save-btn" onClick={handleSave}>
                 Save
               </button>
             </div>
