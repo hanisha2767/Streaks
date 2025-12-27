@@ -1,0 +1,92 @@
+const express = require("express");
+const router = express.Router();
+const auth = require("../middleware/authMiddleware");
+const supabase = require("../src/supabaseClient");
+
+/* ===========================
+   GET ALL REMINDERS
+=========================== */
+router.get("/", auth, async (req, res) => {
+  const { data, error } = await supabase
+    .from("reminders")
+    .select("id, title, reminder_date, reminder_time, completed")
+    .eq("user_id", req.user.id)
+    .order("reminder_date", { ascending: true });
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json(
+    data.map(r => ({
+      id: r.id,
+      title: r.title,
+      date: r.reminder_date,
+      time: r.reminder_time,
+      deleted: r.completed === true,
+    }))
+  );
+});
+
+/* ===========================
+   ADD REMINDER
+=========================== */
+router.post("/", auth, async (req, res) => {
+  const { title, date, time } = req.body;
+
+  const { data, error } = await supabase
+    .from("reminders")
+    .insert([
+      {
+        user_id: req.user.id,
+        title,
+        reminder_date: date,
+        reminder_time: time || null,
+        completed: false,
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json({
+    id: data.id,
+    title: data.title,
+    date: data.reminder_date,
+    time: data.reminder_time,
+    deleted: false,
+  });
+});
+
+/* ===========================
+   UPDATE REMINDER
+=========================== */
+router.put("/:id", auth, async (req, res) => {
+  const { title, date, time } = req.body;
+
+  await supabase
+    .from("reminders")
+    .update({
+      title,
+      reminder_date: date,
+      reminder_time: time || null,
+    })
+    .eq("id", req.params.id)
+    .eq("user_id", req.user.id);
+
+  res.json({ msg: "Reminder updated" });
+});
+
+/* ===========================
+   DELETE REMINDER (SOFT)
+=========================== */
+router.delete("/:id", auth, async (req, res) => {
+  await supabase
+    .from("reminders")
+    .update({ completed: true })
+    .eq("id", req.params.id)
+    .eq("user_id", req.user.id);
+
+  res.json({ msg: "Reminder deleted" });
+});
+
+module.exports = router;
