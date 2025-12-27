@@ -1,110 +1,180 @@
 import { useEffect, useState } from "react";
-import {
-  getHabits,
-  addHabit,
-  completeHabit,
-  updateHabit,
-  deleteHabit,
-  resetHabitToday,
-} from "../api";
 
 function Habits() {
   const [habits, setHabits] = useState([]);
   const [search, setSearch] = useState("");
   const [showHabitModal, setShowHabitModal] = useState(false);
-  const [habitName, setHabitName] = useState("");
-  const [editingId, setEditingId] = useState(null);
+  const [newHabitName, setNewHabitName] = useState("");
+  const [editingHabitId, setEditingHabitId] = useState(null);
+  const [removingHabitId, setRemovingHabitId] = useState(null);
 
   const today = new Date().toISOString().split("T")[0];
 
-  /* LOAD HABITS */
+  /* LOAD */
   useEffect(() => {
-    loadHabits();
-  }, []);
+  const fetchHabits = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-  async function loadHabits() {
     try {
-      const data = await getHabits();
+      const res = await fetch("http://localhost:5000/habits", {
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      });
+
+      const data = await res.json();
       setHabits(data);
     } catch (err) {
-      console.error("Load habits error:", err.message);
+      console.error("Failed to fetch habits", err);
     }
-  }
+  };
 
-  /* TOGGLE TODAY COMPLETE */
-  async function toggleHabit(id) {
-    try {
-      await completeHabit(id);
-      loadHabits();
-    } catch (err) {
-      console.error("Toggle habit error:", err.message);
-    }
-  }
+  fetchHabits();
+}, []);
 
-  /* SAVE (ADD / EDIT) */
-  async function handleSaveHabit() {
-    if (!habitName.trim()) return;
 
-    try {
-      if (editingId) {
-        await updateHabit(editingId, { name: habitName });
-      } else {
-        await addHabit(habitName);
+  const saveHabits = (data) => {
+    setHabits(data);
+    localStorage.setItem("habits", JSON.stringify(data));
+  };
+
+  /* TOGGLE CHECK */
+  const toggleHabit = async (id) => {
+  const token = localStorage.getItem("token");
+  if (!token) return;
+
+  try {
+    const res = await fetch(
+      `http://localhost:5000/habits/${id}/toggle`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+        },
       }
+    );
 
-      setHabitName("");
-      setEditingId(null);
-      setShowHabitModal(false);
-      loadHabits();
-    } catch (err) {
-      console.error("Save habit error:", err.message);
-    }
+    const data = await res.json(); // { completedDates: [...] }
+
+    setHabits(
+      habits.map((h) =>
+        h.id === id
+          ? { ...h, completedDates: data.completedDates }
+          : h
+      )
+    );
+  } catch (err) {
+    console.error("Toggle habit failed", err);
+  }
+};
+
+
+  const handleSaveHabit = async () => {
+  if (!newHabitName.trim()) return;
+
+  const token = localStorage.getItem("token");
+  if (!token) {
+    alert("Please login again");
+    return;
   }
 
-  /* DELETE HABIT */
-  async function handleDelete(id) {
-    if (!window.confirm("Delete this habit?")) return;
+  try {
+    // 🔹 EDIT HABIT
+    if (editingHabitId) {
+      const res = await fetch(
+        `http://localhost:5000/habits/${editingHabitId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token,
+          },
+          body: JSON.stringify({
+            name: newHabitName.trim(),
+          }),
+        }
+      );
 
-    try {
-      await deleteHabit(id);
-      loadHabits();
-    } catch (err) {
-      console.error("Delete habit error:", err.message);
+      const updatedHabit = await res.json();
+
+      setHabits(
+        habits.map((h) =>
+          h.id === editingHabitId ? updatedHabit : h
+        )
+      );
     }
-  }
+    // 🔹 ADD HABIT
+    else {
+      const res = await fetch("http://localhost:5000/habits", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
+        },
+        body: JSON.stringify({
+          name: newHabitName.trim(),
+        }),
+      });
 
-  /* RESET TODAY */
-  async function resetToday() {
-    if (!habits.length) return;
+      const newHabit = await res.json();
 
-    if (!window.confirm("Reset today for all habits?")) return;
-
-    try {
-      await Promise.all(habits.map((h) => resetHabitToday(h.id)));
-      loadHabits();
-    } catch (err) {
-      console.error("Reset today error:", err.message);
+      setHabits([...habits, newHabit]);
     }
+
+    setNewHabitName("");
+    setEditingHabitId(null);
+    setShowHabitModal(false);
+  } catch (err) {
+    console.error("Habit save failed", err);
+    alert("Failed to save habit");
   }
+};
 
-  /* FILTER */
-  const filteredHabits = habits.filter((h) =>
-    h.name.toLowerCase().includes(search.toLowerCase())
+  /* RESET */
+  const resetToday = () => {
+    saveHabits(
+      habits.map((h) => ({
+        ...h,
+        completedDates: (h.completedDates || []).filter((d) => d !== today),
+      }))
+    );
+  };
+
+  /* SOFT DELETE WITH ANIMATION */
+  const deleteHabit = (id) => {
+    setRemovingHabitId(id);
+
+    setTimeout(() => {
+      saveHabits(
+        habits.map((h) =>
+          h.id === id ? { ...h, deleted: true } : h
+        )
+      );
+      setRemovingHabitId(null);
+    }, 250);
+  };
+
+  const filteredHabits = habits.filter(
+    (h) =>
+      !h.deleted &&
+      h.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const undone = filteredHabits.filter(
-    (h) => !h.completed_dates?.includes(today)
-  );
-  const done = filteredHabits.filter((h) =>
-    h.completed_dates?.includes(today)
+  const undoneHabits = filteredHabits.filter(
+    (h) => !h.completedDates?.includes(today)
   );
 
-  const orderedHabits = [...undone, ...done];
+  const doneHabits = filteredHabits.filter(
+    (h) => h.completedDates?.includes(today)
+  );
+
+  const orderedHabits = [...undoneHabits, ...doneHabits];
 
   return (
     <>
-      {/* ================= HABITS CARD ================= */}
       <div className="habits-card">
+        {/* TOP */}
         <div className="habits-top">
           <div>
             <h2 className="habits-title">Habits</h2>
@@ -112,63 +182,51 @@ function Habits() {
           </div>
 
           <div className="habits-controls">
-            <input
-              className="search-input"
-              placeholder="Search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <div className="search-input">
+              <input
+                type="text"
+                placeholder="Search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
 
-            <span
-              className="new-btn"
-              onClick={() => {
-                setEditingId(null);
-                setHabitName("");
-                setShowHabitModal(true);
-              }}
-            >
+            <span className="new-btn" onClick={() => setShowHabitModal(true)}>
               + New
             </span>
-
-            <span className="more-btn">More</span>
           </div>
         </div>
 
         {/* LIST */}
         <ul className="habit-list">
           {orderedHabits.map((h) => {
-            const completedToday =
-              h.completed_dates?.includes(today);
+            const doneToday = h.completedDates?.includes(today);
 
             return (
-              <li key={h.id} className="habit-item">
+              <li
+                key={h.id}
+                className={`habit-item ${
+                  removingHabitId === h.id ? "fade-out" : "fade-in"
+                }`}
+              >
                 <div className="habit-left">
                   <div
-                    className={`checkbox ${
-                      completedToday ? "checked" : ""
-                    }`}
+                    className={`checkbox ${doneToday ? "checked" : ""}`}
                     onClick={() => toggleHabit(h.id)}
                   />
-
-                  <span
-                    className={`habit-text ${
-                      completedToday ? "done" : ""
-                    }`}
-                  >
+                  <span className={`habit-text ${doneToday ? "done" : ""}`}>
                     {h.name}
                   </span>
                 </div>
 
                 <div className="habit-right">
-                  <span className="streak">
-                    🔥 {h.streak || 0}
-                  </span>
+                  <span className="streak">{h.completedDates.length}</span>
 
                   <span
                     className="edit"
                     onClick={() => {
-                      setEditingId(h.id);
-                      setHabitName(h.name);
+                      setEditingHabitId(h.id);
+                      setNewHabitName(h.name);
                       setShowHabitModal(true);
                     }}
                   >
@@ -177,7 +235,7 @@ function Habits() {
 
                   <span
                     className="delete"
-                    onClick={() => handleDelete(h.id)}
+                    onClick={() => deleteHabit(h.id)}
                   >
                     Delete
                   </span>
@@ -191,11 +249,7 @@ function Habits() {
         <div className="habits-footer">
           <span
             className="add-habit-btn"
-            onClick={() => {
-              setEditingId(null);
-              setHabitName("");
-              setShowHabitModal(true);
-            }}
+            onClick={() => setShowHabitModal(true)}
           >
             Add habit
           </span>
@@ -206,41 +260,31 @@ function Habits() {
         </div>
       </div>
 
-      {/* ================= MODAL ================= */}
+      {/* MODAL */}
       {showHabitModal && (
         <div
           className="modal-overlay"
           onClick={() => setShowHabitModal(false)}
         >
-          <div
-            className="modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2>
-              {editingId ? "Edit Habit" : "New Habit"}
-            </h2>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>{editingHabitId ? "Edit Habit" : "Add Habit"}</h2>
 
             <div className="form-row">
               <label>Habit Name</label>
               <input
                 type="text"
-                value={habitName}
-                onChange={(e) => setHabitName(e.target.value)}
-                placeholder="e.g. Read 30 mins"
+                value={newHabitName}
+                onChange={(e) => setNewHabitName(e.target.value)}
               />
             </div>
 
             <div className="modal-actions">
               <button
                 className="btn ghost"
-                onClick={() => {
-                  setShowHabitModal(false);
-                  setEditingId(null);
-                }}
+                onClick={() => setShowHabitModal(false)}
               >
                 Cancel
               </button>
-
               <button className="btn" onClick={handleSaveHabit}>
                 Save
               </button>
