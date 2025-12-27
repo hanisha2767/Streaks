@@ -1,20 +1,34 @@
-import { useEffect, useState } from "react";
-import { supabase } from "../supabaseClient";
+// Updated: src/components/TopBar.jsx (Fixed for React Router and "user" storage)
+import { useState, useEffect } from "react";
+function getNameFromEmail(email) {
+  if (!email) return "User";
 
-function TopBar() {
-  const [user, setUser] = useState(null);
+  const beforeAt = email.split("@")[0];
+  const lettersOnly = beforeAt.replace(/[^a-zA-Z]/g, "");
 
-  // get logged-in user info
+  if (!lettersOnly) return "User";
+
+  return (
+    lettersOnly.charAt(0).toUpperCase() +
+    lettersOnly.slice(1).toLowerCase()
+  );
+}
+
+function TopBar({ onLogout }) {  // Accept onLogout prop
+  const [name, setName] = useState("user");
+  const [email, setEmail] = useState("user@email.com");
+
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-    });
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    setEmail(user.email || "user@email.com");
+    setName(getNameFromEmail(user.email));
   }, []);
 
-  // logout using supabase
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem("activeSection"); // optional cleanup
+  const handleLogoutClick = () => {
+    localStorage.removeItem("userName");  // Backward compat, but not used
+    localStorage.removeItem("userEmail");  // Backward compat, but not used
+    localStorage.removeItem("activeSection");
+    if (onLogout) onLogout();  // Use prop for navigation
   };
 
   return (
@@ -22,8 +36,8 @@ function TopBar() {
       <div className="info-1">
         <div className="profile">
           <div className="profile-info">
-            <p className="para">@{user?.email?.split("@")[0] || "user"}</p>
-            <p className="para">{user?.email}</p>
+            <p className="para">@{name}</p>
+            <p className="para">{email}</p>
           </div>
 
           <img
@@ -32,7 +46,7 @@ function TopBar() {
             alt="profile"
           />
 
-          <div className="info logout-wrapper" onClick={handleLogout}>
+          <div className="info logout-wrapper" onClick={handleLogoutClick}>
             <img
               className="logo-logout"
               src="/images/logout.png"
