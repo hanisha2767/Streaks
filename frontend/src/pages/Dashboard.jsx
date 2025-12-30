@@ -20,6 +20,16 @@ function getNameFromEmail(email) {
     : "User";
 }
 
+/* AUTH HEADER HELPER */
+function getAuthHeaders() {
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+
+  return {
+    Authorization: `Bearer ${token}`,
+  };
+}
+
 /* ================= COMPONENT ================= */
 
 function Dashboard() {
@@ -36,149 +46,135 @@ function Dashboard() {
   const [upcomingReminders, setUpcomingReminders] = useState(0);
   const [habitStreaks, setHabitStreaks] = useState([]);
   const [reminderList, setReminderList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  /* ================= CHART ================= */
+  /* ================= FOCUS CHART ================= */
 
-  const renderChart = (focusData) => {
-    if (!chartRef.current) return;
-
-    const labels = focusData.map(d => d.day);
-    const values = focusData.map(d => d.minutes);
-
-    if (chartInstance.current) {
-      chartInstance.current.destroy();
-    }
-
-    chartInstance.current = new Chart(chartRef.current, {
-      type: "line",
-      data: {
-        labels,
-        datasets: [
-          {
-            data: values,
-            borderColor: "#05c26a",
-            backgroundColor: "rgba(5,194,106,0.2)",
-            tension: 0.4,
-            fill: true,
-            pointRadius: 4,
-            pointBackgroundColor: "#05c26a",
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false } },
-          y: {
-            beginAtZero: true,
-            ticks: { callback: v => `${v}m` },
-          },
-        },
-      },
-    });
-  };
-
-  /* ================= EFFECT ================= */
-
-  useEffect(() => {
-  const token = localStorage.getItem("token");
-  if (!token) {
-    console.warn("No token found");
-    return;
-  }
-
-  const headers = {
-    Authorization: `Bearer ${token}`,
-  };
-
-  /* DATE + GREETING */
-  const now = new Date();
-  setDateText(
-    now.toLocaleDateString("en-US", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    })
-  );
-
-  const hour = now.getHours();
-  setGreeting(
-    hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"
-  );
-
-  /* LOAD USER */
-  fetch(`${API_BASE}/auth/me`, { headers })
-    .then(res => res.ok ? res.json() : null)
-    .then(user => {
-      if (user?.email) {
-        setUsername(getNameFromEmail(user.email));
-      }
-    })
-    .catch(err => console.error("User error:", err));
-
-  /* LOAD DASHBOARD SUMMARY */
-  fetch(`${API_BASE}/dashboard/summary`, { headers })
-    .then(res => res.ok ? res.json() : null)
-    .then(data => {
-      if (!data) return;
-      setTodoCount(data.todos || 0);
-      setHabitTotal(data.habits || 0);
-      setHabitCompleted(data.habitCompleted || 0);
-      setUpcomingReminders(data.reminders || 0);
-      setHabitStreaks(data.habitStreaks || []);
-      setReminderList(data.reminderList || []);
-    })
-    .catch(err => console.error("Dashboard error:", err));
-
-  /* LOAD FOCUS */
  const loadFocus = async () => {
+  const headers = getAuthHeaders();
+  if (!headers) return;
+
   try {
     const res = await fetch(`${API_BASE}/focus/weekly`, { headers });
-    if (!res.ok) throw new Error("Focus API failed");
+    if (!res.ok) return;
 
     const data = await res.json();
-    // data = [{ day: "Sat", minutes: 30 }]
+    if (!Array.isArray(data)) return;
 
-    const labels = [];
-    const values = [];
+    const labels = data.map(d => d.day);
+    const values = data.map(d => d.minutes);
 
-    // Map focus minutes by weekday
-    const focusMap = {};
-    data.forEach(item => {
-      focusMap[item.day] = item.minutes;
-    });
+    // 🔥 WAIT FOR CANVAS TO BE PAINTED
+    requestAnimationFrame(() => {
+      if (!chartRef.current) return;
 
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
+      // ✅ UPDATE IF EXISTS
+      if (chartInstance.current) {
+        chartInstance.current.data.labels = labels;
+        chartInstance.current.data.datasets[0].data = values;
+        chartInstance.current.update();
+        return;
+      }
 
-      const dayLabel = d.toLocaleDateString("en-US", {
-        weekday: "short",
+      // ✅ CREATE ONCE
+      chartInstance.current = new Chart(chartRef.current, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              data: values,
+              borderColor: "#05c26a",
+              backgroundColor: "rgba(5,194,106,0.2)",
+              tension: 0.4,
+              fill: true,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true },
+          },
+        },
       });
-
-      labels.push(dayLabel);
-      values.push(focusMap[dayLabel] || 0);
-    }
-
-    renderChart(labels, values);
-  } catch (err) {
-    console.error("Focus error:", err);
+    });
+  } catch (e) {
+    console.error("Focus error:", e);
   }
 };
 
-loadFocus();
+  /* ================= MAIN EFFECT ================= */
 
-  // ✅ CLEANUP ONLY
-  return () => {
-    if (chartInstance.current) {
-      chartInstance.current.destroy();
-      chartInstance.current = null;
+  useEffect(() => {
+    const headers = getAuthHeaders();
+    if (!headers) {
+      window.location.href = "/login";
+      return;
     }
+
+    const now = new Date();
+    setDateText(
+      now.toLocaleDateString("en-US", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      })
+    );
+
+    const hour = now.getHours();
+    setGreeting(
+      hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"
+    );
+
+    fetch(`${API_BASE}/auth/me`, { headers })
+      .then(res => res.ok ? res.json() : null)
+      .then(user => {
+        if (user?.email) setUsername(getNameFromEmail(user.email));
+      });
+
+    fetch(`${API_BASE}/dashboard/summary`, { headers })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!data) {
+          setError(true);
+          setLoading(false);
+          return;
+        }
+
+        setTodoCount(data.todos ?? 0);
+        setHabitTotal(data.habits ?? 0);
+        setHabitCompleted(data.habitCompleted ?? 0);
+        setUpcomingReminders(data.reminders ?? 0);
+        setHabitStreaks(data.habitStreaks || []);
+        setReminderList(data.reminderList || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError(true);
+        setLoading(false);
+      });
+  }, []);
+
+  /* ✅ DEFER FOCUS LOAD UNTIL CANVAS EXISTS */
+  useEffect(() => {
+  const id = requestAnimationFrame(() => {
+    loadFocus();
+  });
+
+  window.addEventListener("tasks-updated", loadFocus);
+
+  return () => {
+    cancelAnimationFrame(id);
+    window.removeEventListener("tasks-updated", loadFocus);
   };
 }, []);
 
+  if (loading) return <div style={{ padding: 20 }}>Loading…</div>;
+  if (error) return <div style={{ padding: 20, color: "red" }}>Error</div>
 
   /* ================= JSX ================= */
 
@@ -213,13 +209,14 @@ loadFocus();
         <div className="charts-grid">
           <div className="chart-container">
             <p className="title-middle">Focus Minutes (This Week)</p>
-            <canvas ref={chartRef} />
+            <canvas ref={chartRef} style={{ height: "220px" }} />
           </div>
 
           <div className="chart-container">
             <p className="title-middle">Habits Overview</p>
             <ul className="habit-streak-list">
-              {habitStreaks.map((h, i) => (
+              {Array.isArray(habitStreaks) &&
+  habitStreaks.map((h, i) => (
                 <li key={i} className="habit-streak-item">
                   <span>{h.name}</span>
                   <span>🔥 {h.streak}</span>
@@ -231,7 +228,7 @@ loadFocus();
           <div className="chart-container reminders-mini">
             <p className="title-middle">Upcoming Reminders</p>
             <ul className="reminder-mini-list">
-              {reminderList.map(r => (
+              {Array.isArray(reminderList) &&reminderList.map(r => (
                 <li key={r.id} className="reminder-mini-item">
                   <p>{r.title}</p>
                   <span>📅 {formatDate(r.date)}</span>
