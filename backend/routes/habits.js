@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/authMiddleware");
 const supabase = require("../src/supabaseClient");
+const { calculateStreaks } = require("../utils/streakUtils");
 
 const today = () => new Date().toISOString().split("T")[0];
 
@@ -14,19 +15,26 @@ router.get("/", auth, async (req, res) => {
   const { data, error } = await supabase
     .from("habits")
     .select("id, name, completed_dates, completed")
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .eq("completed", true);
 
   if (error) return res.status(500).json({ error: error.message });
 
-  res.json(
-    data.map(h => ({
+  const habitsWithStreaks = data.map(h => {
+    const dates = h.completed_dates || [];
+    const streak = calculateStreaks(dates).current || 0;
+
+    return {
       id: h.id,
       name: h.name,
-      completedDates: h.completed_dates || [],
-      deleted: h.completed === false,
-    }))
-  );
+      completedDates: dates, // keep for toggle UI
+      streak,                // ✅ SINGLE SOURCE
+    };
+  });
+
+  res.json(habitsWithStreaks);
 });
+
 
 /* ===========================
    ADD HABIT
