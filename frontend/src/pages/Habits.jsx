@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API_BASE } from "../config";
 
 function Habits() {
   const [habits, setHabits] = useState([]);
@@ -11,57 +12,48 @@ function Habits() {
   const today = new Date().toISOString().split("T")[0];
 
   /* LOAD */
-  useEffect(() => {
   const fetchHabits = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    try {
-      const res = await fetch("http://localhost:5000/habits", {
-        headers: {
-          Authorization: "Bearer " + token,
-        },
-      });
-
-      const data = await res.json();
-      setHabits(data);
-    } catch (err) {
-      console.error("Failed to fetch habits", err);
-    }
-  };
-
-  fetchHabits();
-}, []);
-
-
-  const saveHabits = (data) => {
-    setHabits(data);
-    localStorage.setItem("habits", JSON.stringify(data));
-  };
-
-  /* TOGGLE CHECK */
-  const toggleHabit = async (id) => {
   const token = localStorage.getItem("token");
   if (!token) return;
 
   try {
-    const res = await fetch(
-      `http://localhost:5000/habits/${id}/toggle`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + token,
-        },
-      }
-    );
+    const res = await fetch(`${API_BASE}/habits`, {
+      headers: {
+        Authorization: "Bearer " + token,
+      },
+    });
 
-    const data = await res.json(); // { completedDates: [...] }
+    const data = await res.json();
+    if (Array.isArray(data)) {
+      setHabits(data);
+    }
+  } catch (err) {
+    console.error("Failed to fetch habits", err);
+  }
+};
 
-    setHabits(
-      habits.map((h) =>
-        h.id === id
-          ? { ...h, completedDates: data.completedDates }
-          : h
+useEffect(() => {
+  fetchHabits();
+}, []);
+
+/* TOGGLE CHECK */
+const toggleHabit = async (id) => {
+  const token = localStorage.getItem("token");
+  if (!token) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/habits/${id}/toggle`, {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + token,
+      },
+    });
+
+    const data = await res.json();
+
+    setHabits(prev =>
+      prev.map(h =>
+        h.id === id ? { ...h, completedDates: data.completedDates } : h
       )
     );
   } catch (err) {
@@ -83,7 +75,7 @@ function Habits() {
     // 🔹 EDIT HABIT
     if (editingHabitId) {
       const res = await fetch(
-        `http://localhost:5000/habits/${editingHabitId}`,
+        `${API_BASE}/habits/${editingHabitId}`,
         {
           method: "PUT",
           headers: {
@@ -106,7 +98,7 @@ function Habits() {
     }
     // 🔹 ADD HABIT
     else {
-      const res = await fetch("http://localhost:5000/habits", {
+      const res = await fetch(`${API_BASE}/habits`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -132,34 +124,46 @@ function Habits() {
 };
 
   /* RESET */
-  const resetToday = () => {
-    saveHabits(
-      habits.map((h) => ({
-        ...h,
-        completedDates: (h.completedDates || []).filter((d) => d !== today),
-      }))
-    );
-  };
+ const resetToday = () => {
+  // just refetch, backend is source of truth
+  fetchHabits();
+};
+
 
   /* SOFT DELETE WITH ANIMATION */
-  const deleteHabit = (id) => {
-    setRemovingHabitId(id);
+  const deleteHabit = async (id) => {
+    const habitToArchive = habits.find(h => h.id === id);
 
-    setTimeout(() => {
-      saveHabits(
-        habits.map((h) =>
-          h.id === id ? { ...h, deleted: true } : h
-        )
-      );
-      setRemovingHabitId(null);
-    }, 250);
-  };
+  if (habitToArchive) {
+    const stored = JSON.parse(localStorage.getItem("habits")) || [];
+    localStorage.setItem(
+      "habits",
+      JSON.stringify([...stored, { ...habitToArchive, deleted: true }])
+    );
+  }
+  const token = localStorage.getItem("token");
+  if (!token) return;
 
-  const filteredHabits = habits.filter(
-    (h) =>
-      !h.deleted &&
-      h.name.toLowerCase().includes(search.toLowerCase())
-  );
+  setRemovingHabitId(id);
+
+  setTimeout(async () => {
+    await fetch(`${API_BASE}/habits/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: "Bearer " + token,
+      },
+    });
+
+    setHabits(prev => prev.filter(h => h.id !== id));
+    setRemovingHabitId(null);
+  }, 250);
+};
+
+
+ const filteredHabits = habits.filter(h =>
+  h.name.toLowerCase().includes(search.toLowerCase())
+);
+
 
   const undoneHabits = filteredHabits.filter(
     (h) => !h.completedDates?.includes(today)
@@ -220,8 +224,7 @@ function Habits() {
                 </div>
 
                 <div className="habit-right">
-                  <span className="streak">{h.completedDates.length}</span>
-
+                  <span className="streak"> {h.streak}</span>
                   <span
                     className="edit"
                     onClick={() => {
