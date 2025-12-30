@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../config";
 
+
 /* ================= HELPERS ================= */
 function addFocusMinutes(minutes) {
   const today = new Date().toISOString().split("T")[0];
@@ -52,6 +53,7 @@ function Todo() {
     duration: "",
     dueDate: "",
     quadrant: 1,
+    completed: false, 
   });
 
   const token = localStorage.getItem("token");
@@ -62,20 +64,22 @@ function Todo() {
     headers: { Authorization: `Bearer ${token}` },
   });
 
+  if (!res.ok) {
+    console.error("Fetch failed");
+    return;
+  }
+
   const data = await res.json();
 
-  const mapped = data.map(t => ({
-    id: t.id,
-    title: t.title,
-    duration: t.focus_time,   // ✅ FIX
-    dueDate: t.due_date,      // ✅ FIX
-    quadrant: t.quadrant,
-    completed: t.completed ?? false,
-  }));
-
-  setTasks(mapped);
+  // ✅ backend already gives duration & dueDate
+  setTasks(
+    data.map(t => ({
+      ...t,
+      quadrant: Number(t.quadrant),
+      duration: Number(t.duration),
+    }))
+  );
 };
-
 
  useEffect(() => {
   if (token) {
@@ -94,10 +98,14 @@ useEffect(() => {
     focus_time: Number(task.duration),
     due_date: task.dueDate,
     quadrant: task.quadrant,
-    completed: false,
+    completed: task.completed ?? false,
   };
 
-  const res = await fetch(`${API_BASE}/tasks`, {
+  const url = task.id
+    ? `${API_BASE}/tasks/${task.id}`
+    : `${API_BASE}/tasks`;
+
+  const res = await fetch(url, {
     method: task.id ? "PUT" : "POST",
     headers: {
       "Content-Type": "application/json",
@@ -106,57 +114,80 @@ useEffect(() => {
     body: JSON.stringify(payload),
   });
 
+  if (res.status === 401) {
+    localStorage.removeItem("token");
+    throw new Error("Session expired. Please login again.");
+  }
+
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.msg || "Task save failed");
   }
 
-  const savedTask = await res.json();
-
-  // normalize backend → frontend shape
-  return {
-    id: savedTask.id,
-    title: savedTask.title,
-    duration: savedTask.focus_time,
-    dueDate: savedTask.due_date,
-    quadrant: Number(savedTask.quadrant),
-    completed: savedTask.completed ?? false,
-  };
+  return await res.json(); // backend already returns formatted task
 };
 
-
   const toggleDoneBackend = async (task) => {
-    const nowCompleted = !task.completed;
+  const nowCompleted = !task.completed;
 
-    if (nowCompleted) addFocusMinutes(task.duration);
-    else removeFocusMinutes(task.duration);
+  //  Update task completed state
+  const res = await fetch(`${API_BASE}/tasks/${task.id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ completed: nowCompleted }),
+  });
 
-    await fetch(`${API_BASE}/tasks/${task.id}`, {
-      method: "PUT",
+  if (!res.ok) {
+    console.error("Task toggle failed");
+    return;
+  }
+
+  // If completed → add focus session
+  if (nowCompleted) {
+    await fetch(`${API_BASE}/focus`, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ completed: nowCompleted }),
+      body: JSON.stringify({ minutes: task.duration }),
     });
+  }
 
-    fetchTasks();
-  };
+  fetchTasks();
+
+  // notify dashboard to reload chart
+  window.dispatchEvent(new Event("tasks-updated"));
+};
+
 
   const onDragStart = (e, task) => {
   e.dataTransfer.setData("taskId", task.id);
 };
 
-const onDrop = (e, quadrant) => {
+const onDrop = async (e, quadrant) => {
   const taskId = e.dataTransfer.getData("taskId");
 
+  // optimistic UI
   setTasks(prev =>
     prev.map(t =>
       t.id == taskId ? { ...t, quadrant } : t
     )
   );
-};
 
+  // backend sync
+  await fetch(`${API_BASE}/tasks/${taskId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ quadrant }),
+  });
+};
 
   /* ================= FILTER ================= */
 
@@ -176,6 +207,31 @@ const onDrop = (e, quadrant) => {
     if (task.dueDate < todayStr) return "Date cannot be past";
     return "";
   };
+
+  const deleteTask = async (id) => {
+    const taskToArchive = tasks.find(t => t.id === id);
+
+  if (taskToArchive) {
+    const stored = JSON.parse(localStorage.getItem("tasks")) || [];
+    localStorage.setItem(
+      "tasks",
+      JSON.stringify([...stored, { ...taskToArchive, deleted: true }])
+    );
+  }
+  try {
+    await fetch(`${API_BASE}/tasks/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    setTasks(prev => prev.filter(t => t.id !== id));
+  } catch (e) {
+    console.error("Delete failed", e);
+  }
+};
+
 
   return (
     <div className="todo-page">
@@ -238,9 +294,11 @@ const onDrop = (e, quadrant) => {
                   <div className="matrix-task-row">
                     <div className="task-left">
                       <input
-                        type="checkbox"
-                        onChange={() => toggleDoneBackend(task)}
-                      />
+  type="checkbox"
+  checked={task.completed}
+  onChange={() => toggleDoneBackend(task)}
+/>
+
                       <span className="task-name">{task.title}</span>
                     </div>
 
@@ -345,9 +403,14 @@ const onDrop = (e, quadrant) => {
     setError(err);
     return;
   }
+  if (!token) {
+    setError("Session expired. Please login again.");
+    return;
+  }
 
   try {
     const savedTask = await saveTaskToBackend(task);
+    await fetchTasks(); // force sync
 
     // 🔥 THIS LINE MAKES TASK APPEAR
     setTasks(prev =>
