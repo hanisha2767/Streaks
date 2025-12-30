@@ -44,10 +44,16 @@ router.get("/weekly", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
 
+    const today = new Date();
+    const startDate = new Date();
+    startDate.setDate(today.getDate() - 6); // last 7 days
+
     const { data, error } = await supabase
       .from("focus_sessions")
       .select("date, minutes")
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .gte("date", startDate.toISOString().split("T")[0])
+      .lte("date", today.toISOString().split("T")[0]);
 
     if (error) {
       return res.status(500).json({ msg: error.message });
@@ -62,9 +68,9 @@ router.get("/weekly", authMiddleware, async (req, res) => {
       map[day] = (map[day] || 0) + row.minutes;
     });
 
-    const result = Object.keys(map).map(day => ({
+    const result = days.map(day => ({
       day,
-      minutes: map[day],
+      minutes: map[day] || 0,
     }));
 
     res.json(result);
@@ -73,5 +79,6 @@ router.get("/weekly", authMiddleware, async (req, res) => {
     res.status(500).json({ msg: "Server error" });
   }
 });
+
 
 module.exports = router;
