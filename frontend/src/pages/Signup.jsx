@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "../css/styles-sign-up.css";
-import { supabase } from "../supabaseClient";
+import { API_BASE } from "../config";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
@@ -23,23 +23,38 @@ export default function Signup() {
 
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (error) {
-      setMessage(error.message);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setMessage(data.message || "Signup failed");
+        setLoading(false);
+        return;
+      }
+
+      // ✅ Save token & user
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      setMessage("Signup successful!");
+
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 800);
+    } catch (err) {
+      console.error("Signup error:", err);
+      setMessage("Server error. Please try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setMessage("Signup successful! Check your email.");
-    setLoading(false);
-
-    setTimeout(() => {
-      navigate("/login");
-    }, 1000);
   };
 
   return (
@@ -48,16 +63,8 @@ export default function Signup() {
       <nav>
         <div className="con">
           <div className="name">
-            <img
-              className="icon-logo"
-              src={`${import.meta.env.BASE_URL}images/logo.png`}
-              alt="logo"
-            />
-            <img
-              className="title"
-              src={`${import.meta.env.BASE_URL}images/title.png`}
-              alt="title"
-            />
+            <img className="icon-logo" src="/images/logo.png" alt="logo" />
+            <img className="title" src="/images/title.png" alt="title" />
           </div>
 
           <ul className="info">
@@ -67,7 +74,10 @@ export default function Signup() {
           </ul>
         </div>
 
-        <button className="login-button" onClick={() => navigate("/login")}>
+        <button
+          className="login-button"
+          onClick={() => navigate("/login")}
+        >
           Log In
         </button>
       </nav>
@@ -117,7 +127,11 @@ export default function Signup() {
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
 
-            <button type="submit" className="continue" disabled={loading}>
+            <button
+              type="submit"
+              className="continue"
+              disabled={loading}
+            >
               {loading ? "Creating account..." : "Continue"}
             </button>
           </form>
