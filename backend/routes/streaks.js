@@ -27,6 +27,7 @@ router.get("/summary", auth, async (req, res) => {
       .from("habits")
       .select("id, name, completed_dates", { count: "exact" })
       .eq("user_id", userId);
+      .eq("completed", true);
 
     /* ---------- HABITS COMPLETED TODAY ---------- */
     let habitCompleted = 0;
@@ -88,3 +89,4 @@ router.get("/summary", auth, async (req, res) => {
 });
 
 module.exports = router;
+
