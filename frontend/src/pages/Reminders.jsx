@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API_BASE } from "../config";
 
 function formatCoolDate(dateStr) {
   if (!dateStr) return "--";
@@ -44,7 +45,8 @@ function Reminders() {
     if (!token) return;
 
     try {
-      const res = await fetch("http://localhost:5000/reminders", {
+      const res = await fetch(`${API_BASE}/reminders`
+, {
         headers: {
           Authorization: "Bearer " + token,
         },
@@ -68,8 +70,17 @@ function Reminders() {
 
   /* ================= DELETE ================= */
   const deleteReminder = async (id) => {
+    const reminderToArchive = reminders.find(r => r.id === id);
+
+  if (reminderToArchive) {
+    const stored = JSON.parse(localStorage.getItem("reminders")) || [];
+    localStorage.setItem(
+      "reminders",
+      JSON.stringify([...stored, { ...reminderToArchive, deleted: true }])
+    );
+  }
     try {
-      await fetch(`http://localhost:5000/reminders/${id}`, {
+      await fetch(`${API_BASE}/reminders/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: "Bearer " + token,
@@ -109,7 +120,7 @@ function Reminders() {
     try {
       if (editingId) {
         // EDIT
-        await fetch(`http://localhost:5000/reminders/${editingId}`, {
+        await fetch(`${API_BASE}/reminders/${editingId}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -119,7 +130,7 @@ function Reminders() {
         });
       } else {
         // ADD
-        await fetch("http://localhost:5000/reminders", {
+        await fetch(`${API_BASE}/reminders`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
