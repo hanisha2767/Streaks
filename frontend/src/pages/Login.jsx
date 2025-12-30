@@ -40,7 +40,7 @@ export default function Login() {
       setMessage("Login successful!");
 
       setTimeout(() => {
-        window.location.href = "/dashboard";
+        window.location.href = "/Streaks/dashboard";
       }, 800);
     } catch (err) {
       console.error("Login error:", err);
@@ -109,7 +109,7 @@ export default function Login() {
 
           <p style={{ color: "white", marginTop: "10px" }}>
             Don&apos;t have an account?{" "}
-            <Link to="/" style={{ color: "#05c26a" }}>
+            <Link to="/signup" style={{ color: "#05c26a" }}>
               Sign up
             </Link>
           </p>
