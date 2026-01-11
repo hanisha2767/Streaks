@@ -39,13 +39,15 @@ img {
 }
 
 .icon-logo {
-  width: 40px;
+  width: 50px;
+  /* Increased from 40px */
   height: auto;
-  margin-right: 12px;
+  margin-right: 14px;
 }
 
 .title {
-  width: 90px;
+  width: 110px;
+  /* Increased from 90px */
   height: auto;
 }
 
@@ -69,10 +71,10 @@ img {
 }
 
 .nav-bar-icons .nav-icon {
-  width: 24px;
-  /* Larger icons */
-  height: 24px;
-  margin-right: 18px;
+  width: 28px;
+  /* Increased from 24px */
+  height: 28px;
+  margin-right: 20px;
   opacity: 0.8;
 }
 
@@ -124,11 +126,12 @@ img {
 }
 
 .profile-pic {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 52px;
+  /* Increased from 44px */
+  height: 52px;
+  border-radius: 14px;
   /* Rounded square */
-  margin-left: 15px;
+  margin-left: 18px;
   background: #3b4252;
   border: none;
 }
@@ -147,8 +150,9 @@ img {
 }
 
 .logo-logout {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  /* Increased from 24px */
+  height: 28px;
 }
 
 .info-1 {
