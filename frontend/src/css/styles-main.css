@@ -42,7 +42,8 @@ img {
   width: 100px;
   /* Adjusted for better balance */
   height: auto;
-  margin-right: 16px;
+  margin-right: 0px;
+  /* Removed margin for closer spacing */
 }
 
 .title {
