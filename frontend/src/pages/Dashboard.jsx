@@ -105,40 +105,7 @@ function Dashboard() {
         });
       });
     } catch (e) {
-      console.warn("Focus error, using MOCK DATA:", e);
-      // Mock Data for Chart
-      const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-      const values = [45, 30, 60, 25, 90, 45, 20];
-
-      requestAnimationFrame(() => {
-        if (!chartRef.current) return;
-        if (chartInstance.current) {
-          chartInstance.current.data.labels = labels;
-          chartInstance.current.data.datasets[0].data = values;
-          chartInstance.current.update();
-        } else {
-          // Create Chart
-          chartInstance.current = new Chart(chartRef.current, {
-            type: "line",
-            data: {
-              labels,
-              datasets: [{
-                data: values,
-                borderColor: "#05c26a",
-                backgroundColor: "rgba(5,194,106,0.2)",
-                tension: 0.4,
-                fill: true,
-              }],
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { display: false } },
-              scales: { y: { beginAtZero: true } },
-            },
-          });
-        }
-      });
+      console.error("Focus error:", e);
     }
   };
 
@@ -169,10 +136,6 @@ function Dashboard() {
       .then(res => res.ok ? res.json() : null)
       .then(user => {
         if (user?.email) setUsername(getNameFromEmail(user.email));
-      })
-      .catch(() => {
-        console.log("Auth check failed, staying in Demo Mode");
-        setUsername("Demo User");
       });
 
     fetch(`${API_BASE}/dashboard/summary`, { headers })
@@ -203,26 +166,9 @@ function Dashboard() {
         setLoading(false);
       })
       .catch((err) => {
-        console.warn("Dashboard fetch error, switching to MOCK DATA:", err);
-        // Fallback to Mock Data so the UI looks good
-        setTodoCount(5);
-        setHabitTotal(4);
-        setHabitCompleted(2);
-        setUpcomingReminders(3);
-        setHabitStreaks([
-          { name: "Morning Run", streak: 12 },
-          { name: "Read 30m", streak: 5 },
-          { name: "Drink Water", streak: 21 },
-        ]);
-        setReminderList([
-          { id: 1, title: "Team Meeting", date: new Date().toISOString() },
-          { id: 2, title: "Submit Report", date: new Date(Date.now() + 86400000).toISOString() },
-          { id: 3, title: "Call Mom", date: new Date(Date.now() + 172800000).toISOString() },
-        ]);
-        setUsername("Guest User"); // Mock User
-        setGreeting("Welcome");
+        console.error("Dashboard fetch error:", err);
+        setError(true);
         setLoading(false);
-        // Do NOT set error=true, so the UI renders
       });
   }, []);
 
