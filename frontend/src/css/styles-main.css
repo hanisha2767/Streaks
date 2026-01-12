@@ -46,8 +46,8 @@ img {
 }
 
 .title {
-  width: 250px;
-  /* Massive increase */
+  width: 160px;
+  /* Reduced to balance with logo */
   height: auto;
 }
 
