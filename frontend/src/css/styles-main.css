@@ -39,15 +39,15 @@ img {
 }
 
 .icon-logo {
-  width: 120px;
-  /* Massive increase */
+  width: 100px;
+  /* Adjusted for better balance */
   height: auto;
-  margin-right: 20px;
+  margin-right: 16px;
 }
 
 .title {
-  width: 160px;
-  /* Reduced to balance with logo */
+  width: 120px;
+  /* Significantly reduced to match logo */
   height: auto;
 }
 
