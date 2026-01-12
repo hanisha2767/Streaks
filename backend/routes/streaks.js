@@ -23,11 +23,12 @@ router.get("/summary", auth, async (req, res) => {
       .eq("completed", false);
 
     /* ---------- HABITS (ALL ACTIVE HABITS) ---------- */
+    /* ---------- HABITS (ALL ACTIVE HABITS) ---------- */
     const { data: habitsData, count: habits } = await supabase
       .from("habits")
       .select("id, name, completed_dates", { count: "exact" })
       .eq("user_id", userId)
-      .eq("completed", true);
+      .eq("archived", false);
 
     /* ---------- HABITS COMPLETED TODAY ---------- */
     let habitCompleted = 0;
