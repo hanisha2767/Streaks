@@ -11,12 +11,18 @@ const today = () => new Date().toISOString().split("T")[0];
 =========================== */
 router.get("/", auth, async (req, res) => {
   const userId = req.user.id;
+  const showAll = req.query.all === "true";
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("habits")
     .select("id, name, completed_dates, completed")
-    .eq("user_id", userId)
-    .eq("completed", true);
+    .eq("user_id", userId);
+
+  if (!showAll) {
+    query = query.eq("completed", true);
+  }
+
+  const { data, error } = await query;
 
   if (error) return res.status(500).json({ error: error.message });
 
@@ -100,13 +106,17 @@ router.post("/:id/toggle", auth, async (req, res) => {
    UPDATE HABIT
 =========================== */
 router.put("/:id", auth, async (req, res) => {
-  const { name } = req.body;
+  const { name, completed } = req.body;
   const habitId = req.params.id;
   const userId = req.user.id;
 
+  const updates = {};
+  if (name !== undefined) updates.name = name;
+  if (completed !== undefined) updates.completed = completed;
+
   const { data, error } = await supabase
     .from("habits")
-    .update({ name })
+    .update(updates)
     .eq("id", habitId)
     .eq("user_id", userId)
     .select()

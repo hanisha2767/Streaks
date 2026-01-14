@@ -61,15 +61,17 @@ router.post("/", auth, async (req, res) => {
    UPDATE REMINDER
 =========================== */
 router.put("/:id", auth, async (req, res) => {
-  const { title, date, time } = req.body;
+  const { title, date, time, completed } = req.body;
+
+  const updates = {};
+  if (title !== undefined) updates.title = title;
+  if (date !== undefined) updates.reminder_date = date;
+  if (time !== undefined) updates.reminder_time = time || null;
+  if (completed !== undefined) updates.completed = completed;
 
   await supabase
     .from("reminders")
-    .update({
-      title,
-      reminder_date: date,
-      reminder_time: time || null,
-    })
+    .update(updates)
     .eq("id", req.params.id)
     .eq("user_id", req.user.id);
 

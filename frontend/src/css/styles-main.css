@@ -1050,35 +1050,78 @@ canvas {
   text-decoration: underline;
 }
 
-/* ========== ARCHIVE ========== */
+/* ========== ARCHIVE PAGE ========== */
+.archive-section {
+  margin-bottom: 40px;
+}
+
+.archive-section h2 {
+  font-size: 24px;
+  color: #fff;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
 .archive-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 15px;
 }
 
 .archive-item {
   background: #2e3440;
-  border-radius: 12px;
-  padding: 16px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.03);
-  opacity: 0.8;
+  padding: 24px 30px;
+  border-radius: 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.05);
   transition: 0.2s;
 }
 
 .archive-item:hover {
-  opacity: 1;
-  background: #3b4250;
+  background: #353c4a;
+  transform: translateX(4px);
 }
 
 .archive-info h3 {
-  margin: 0 0 4px 0;
-  font-size: 15px;
-  color: #d8dee9;
+  font-size: 20px;
+  color: #fff;
+  margin: 0 0 6px 0;
+  font-weight: 600;
 }
 
 .archive-info p {
+  font-size: 15px;
+  color: #8892b0;
   margin: 0;
-  font-size: 13px;
-  color: #81a1c1;
+}
+
+.btn-undo,
+.btn-restore {
+  background: #05c26a;
+  color: #fff;
+  border: none;
+  padding: 10px 30px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 15px;
+  transition: 0.2s;
+  box-shadow: 0 4px 12px rgba(5, 194, 106, 0.2);
+}
+
+.btn-undo:hover,
+.btn-restore:hover {
+  background: #04a55c;
+  transform: scale(1.05);
+  box-shadow: 0 6px 16px rgba(5, 194, 106, 0.3);
+}
+
+.no-data {
+  color: #a6adba;
+  font-style: italic;
+  font-size: 14px;
+  margin-top: -10px;
+  margin-bottom: 30px;
 }

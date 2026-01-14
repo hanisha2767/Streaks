@@ -23,12 +23,17 @@ function formatTask(row) {
    GET /tasks
 ================================ */
 router.get("/", auth, async (req, res) => {
-  const { data, error } = await supabase
+  const showAll = req.query.all === "true";
+  let query = supabase
     .from("tasks")
     .select("*")
-    .eq("user_id", req.user.id)
-    .eq("archived", false)
-    .order("created_at", { ascending: false });
+    .eq("user_id", req.user.id);
+
+  if (!showAll) {
+    query = query.eq("archived", false);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) return res.status(500).json({ msg: error.message });
 
@@ -84,6 +89,7 @@ router.put("/:id", auth, async (req, res) => {
   if (body.due_date !== undefined) updates.due_date = body.due_date;
   if (body.quadrant !== undefined) updates.quadrant = body.quadrant;
   if (body.completed !== undefined) updates.completed = body.completed;
+  if (body.archived !== undefined) updates.archived = body.archived;
 
   const { data, error } = await supabase
     .from("tasks")

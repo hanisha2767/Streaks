@@ -1,50 +1,111 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../config";
 
-/* same helper */
-function removeFocusMinutes(minutes) {
-  const today = new Date().toISOString().split("T")[0];
-  const focusData = JSON.parse(localStorage.getItem("focusHours")) || {};
-  focusData[today] = Math.max(0, (focusData[today] || 0) - Number(minutes));
-  localStorage.setItem("focusHours", JSON.stringify(focusData));
-}
-
 function Archive() {
   const token = localStorage.getItem("token");
 
-  const [completedTasks, setCompletedTasks] = useState([]);
-  const [delTasks, setDelTasks] = useState([]);
-  const [delHabits, setDelHabits] = useState([]);
-  const [delReminders, setDelReminders] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [habits, setHabits] = useState([]);
+  const [reminders, setReminders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAll = async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const [tRes, hRes, rRes] = await Promise.all([
+        fetch(`${API_BASE}/tasks?all=true`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE}/habits?all=true`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API_BASE}/reminders`, { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+
+      const tData = await tRes.json();
+      const hData = await hRes.json();
+      const rData = await rRes.json();
+
+      setTasks(Array.isArray(tData) ? tData : []);
+      setHabits(Array.isArray(hData) ? hData : []);
+      setReminders(Array.isArray(rData) ? rData : []);
+    } catch (err) {
+      console.error("Failed to fetch archive", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // BACKEND: Completed Tasks
-    if (token) {
-      fetch(`${API_BASE}/tasks`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          setCompletedTasks(data.filter((t) => t.completed));
-        })
-        .catch(console.error);
-    }
-
-    // LOCALSTORAGE: Deleted Items
-    const lsHabits = JSON.parse(localStorage.getItem("habits") || "[]");
-    setDelHabits(lsHabits.filter((h) => h.deleted));
-
-    const lsTasks = JSON.parse(localStorage.getItem("tasks") || "[]");
-    setDelTasks(lsTasks.filter((t) => t.deleted));
-
-    const lsReminders = JSON.parse(localStorage.getItem("reminders") || "[]");
-    setDelReminders(lsReminders.filter((r) => r.deleted));
+    fetchAll();
   }, []);
 
+  const handleRestore = async (type, id) => {
+    let url = "";
+    let body = {};
+
+    if (type === "task") {
+      url = `${API_BASE}/tasks/${id}`;
+      body = { archived: false };
+    } else if (type === "habit") {
+      url = `${API_BASE}/habits/${id}`;
+      body = { completed: true }; // for habits, completed: true means ACTIVE
+    } else if (type === "reminder") {
+      url = `${API_BASE}/reminders/${id}`;
+      body = { completed: false }; // for reminders, completed: false means ACTIVE
+    }
+
+    try {
+      await fetch(url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      });
+      fetchAll();
+      window.dispatchEvent(new Event("tasks-updated"));
+    } catch (err) {
+      console.error("Restore failed", err);
+    }
+  };
+
+  const handleUndoTask = async (task) => {
+    try {
+      // 1. Unmark task as completed
+      await fetch(`${API_BASE}/tasks/${task.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ completed: false })
+      });
+
+      // 2. Decrement focus minutes
+      await fetch(`${API_BASE}/focus/decrement`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ minutes: task.duration })
+      });
+
+      fetchAll();
+      window.dispatchEvent(new Event("tasks-updated"));
+    } catch (err) {
+      console.error("Undo failed", err);
+    }
+  };
+
+  const completedTasks = tasks.filter(t => t.completed && !t.archived);
+  const deletedTasks = tasks.filter(t => t.archived);
+  const deletedHabits = habits.filter(h => h.completed === false || h.deleted); // backend uses completed: false for deleted
+  const deletedReminders = reminders.filter(r => r.deleted);
+
+  if (loading) return <div style={{ color: "#fff", padding: "100px 320px" }}>Loading Archive...</div>;
 
   return (
     <div className="habits-card">
-      {/* TOP */}
       <div className="habits-top">
         <div>
           <h2 className="habits-title">Archive</h2>
@@ -52,61 +113,79 @@ function Archive() {
         </div>
       </div>
 
-      <div className="archive-list" style={{ marginTop: "20px" }}>
+      <div className="archive-content">
 
-        {/* ================= COMPLETED TASKS ================= */}
-        {/* ================= COMPLETED TASKS ================= */}
-        <h2>Completed Tasks</h2>
-        {completedTasks.length === 0 && <p>No completed tasks</p>}
-
-        {completedTasks.map(task => (
-          <div
-            key={task.id}
-            className="archive-item"
-          >
-            <div className="archive-info">
-              <h3>{task.title}</h3>
-              <p>⏱ {task.duration} min</p>
+        {/* COMPLETED TASKS */}
+        <div className="archive-section">
+          <h2>Completed Tasks</h2>
+          {completedTasks.length === 0 ? <p className="no-data">No completed tasks</p> : (
+            <div className="archive-list">
+              {completedTasks.map(task => (
+                <div key={task.id} className="archive-item">
+                  <div className="archive-info">
+                    <h3>{task.title}</h3>
+                    <p>⏱ {task.duration} min</p>
+                  </div>
+                  <button className="btn-undo" onClick={() => handleUndoTask(task)}>Undo</button>
+                </div>
+              ))}
             </div>
-          </div>
-        ))}
+          )}
+        </div>
 
-        {/* ================= DELETED TASKS ================= */}
-        <h2>Deleted Tasks</h2>
-        {delTasks.length === 0 && <p>No deleted tasks</p>}
-
-        {delTasks.map(task => (
-          <div key={task.id} className="archive-item">
-            <div className="archive-info">
-              <h3>{task.title}</h3>
+        {/* DELETED TASKS */}
+        <div className="archive-section">
+          <h2>Deleted Tasks</h2>
+          {deletedTasks.length === 0 ? <p className="no-data">No deleted tasks</p> : (
+            <div className="archive-list">
+              {deletedTasks.map(task => (
+                <div key={task.id} className="archive-item">
+                  <div className="archive-info">
+                    <h3>{task.title}</h3>
+                    <p>⏱ {task.duration} min</p>
+                  </div>
+                  <button className="btn-restore" onClick={() => handleRestore("task", task.id)}>Restore</button>
+                </div>
+              ))}
             </div>
-          </div>
-        ))}
+          )}
+        </div>
 
-        {/* ================= DELETED HABITS ================= */}
-        <h2>Deleted Habits</h2>
-        {delHabits.length === 0 && <p>No deleted habits</p>}
-
-        {delHabits.map(habit => (
-          <div key={habit.id} className="archive-item">
-            <div className="archive-info">
-              <h3>{habit.name}</h3>
+        {/* DELETED HABITS */}
+        <div className="archive-section">
+          <h2>Deleted Habits</h2>
+          {deletedHabits.length === 0 ? <p className="no-data">No deleted habits</p> : (
+            <div className="archive-list">
+              {deletedHabits.map(habit => (
+                <div key={habit.id} className="archive-item">
+                  <div className="archive-info">
+                    <h3>{habit.name}</h3>
+                  </div>
+                  <button className="btn-restore" onClick={() => handleRestore("habit", habit.id)}>Restore</button>
+                </div>
+              ))}
             </div>
-          </div>
-        ))}
+          )}
+        </div>
 
-        {/* ================= DELETED REMINDERS ================= */}
-        <h2>Deleted Reminders</h2>
-        {delReminders.length === 0 && <p>No deleted reminders</p>}
-
-        {delReminders.map(rem => (
-          <div key={rem.id} className="archive-item">
-            <div className="archive-info">
-              <h3>{rem.title}</h3>
-              <p>{rem.date} • {rem.time}</p>
+        {/* DELETED REMINDERS */}
+        <div className="archive-section">
+          <h2>Deleted Reminders</h2>
+          {deletedReminders.length === 0 ? <p className="no-data">No deleted reminders</p> : (
+            <div className="archive-list">
+              {deletedReminders.map(rem => (
+                <div key={rem.id} className="archive-item">
+                  <div className="archive-info">
+                    <h3>{rem.title}</h3>
+                    <p>{rem.date} • {rem.time}</p>
+                  </div>
+                  <button className="btn-restore" onClick={() => handleRestore("reminder", rem.id)}>Restore</button>
+                </div>
+              ))}
             </div>
-          </div>
-        ))}
+          )}
+        </div>
+
       </div>
     </div>
   );

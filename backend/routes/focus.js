@@ -81,4 +81,42 @@ router.get("/weekly", authMiddleware, async (req, res) => {
 });
 
 
+/* ===============================
+   DECREMENT FOCUS SESSION
+   POST /focus/decrement
+================================ */
+router.post("/decrement", authMiddleware, async (req, res) => {
+  try {
+    const { minutes } = req.body;
+    const userId = req.user.id;
+    const today = new Date().toISOString().split("T")[0];
+
+    if (!minutes || minutes <= 0) {
+      return res.status(400).json({ msg: "Minutes required" });
+    }
+
+    // Since focus_sessions is a history log, we add a negative entry
+    // to "undo" the minutes added earlier. 
+    // This allows the weekly summary to correctly reflect the subtraction.
+    const { error } = await supabase
+      .from("focus_sessions")
+      .insert([
+        {
+          user_id: userId,
+          minutes: -Number(minutes),
+          date: today,
+        },
+      ]);
+
+    if (error) {
+      return res.status(500).json({ msg: error.message });
+    }
+
+    res.json({ msg: "Focus minutes decremented" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
 module.exports = router;
