@@ -97,6 +97,35 @@ router.post("/:id/toggle", auth, async (req, res) => {
 });
 
 /* ===========================
+   UPDATE HABIT
+=========================== */
+router.put("/:id", auth, async (req, res) => {
+  const { name } = req.body;
+  const habitId = req.params.id;
+  const userId = req.user.id;
+
+  const { data, error } = await supabase
+    .from("habits")
+    .update({ name })
+    .eq("id", habitId)
+    .eq("user_id", userId)
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  const dates = data.completed_dates || [];
+  const streak = calculateStreaks(dates).current || 0;
+
+  res.json({
+    id: data.id,
+    name: data.name,
+    completedDates: dates,
+    streak,
+  });
+});
+
+/* ===========================
    DELETE HABIT (SOFT)
 =========================== */
 router.delete("/:id", auth, async (req, res) => {
