@@ -16,7 +16,7 @@ function Archive() {
       const [tRes, hRes, rRes] = await Promise.all([
         fetch(`${API_BASE}/tasks?all=true`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${API_BASE}/habits?all=true`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${API_BASE}/reminders`, { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`${API_BASE}/reminders?all=true`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
 
       const tData = await tRes.json();
@@ -99,8 +99,8 @@ function Archive() {
 
   const completedTasks = tasks.filter(t => t.completed && !t.archived);
   const deletedTasks = tasks.filter(t => t.archived);
-  const deletedHabits = habits.filter(h => h.completed === false || h.deleted); // backend uses completed: false for deleted
-  const deletedReminders = reminders.filter(r => r.deleted);
+  const deletedHabits = habits.filter(h => h.completed === false);
+  const deletedReminders = reminders.filter(r => r.completed === true);
 
   if (loading) return <div style={{ color: "#fff", padding: "100px 320px" }}>Loading Archive...</div>;
 

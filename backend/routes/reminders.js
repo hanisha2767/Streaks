@@ -7,11 +7,17 @@ const supabase = require("../src/supabaseClient");
    GET ALL REMINDERS
 =========================== */
 router.get("/", auth, async (req, res) => {
-  const { data, error } = await supabase
+  const showAll = req.query.all === "true";
+  let query = supabase
     .from("reminders")
     .select("id, title, reminder_date, reminder_time, completed")
-    .eq("user_id", req.user.id)
-    .order("reminder_date", { ascending: true });
+    .eq("user_id", req.user.id);
+
+  if (!showAll) {
+    query = query.eq("completed", false);
+  }
+
+  const { data, error } = await query.order("reminder_date", { ascending: true });
 
   if (error) return res.status(500).json({ error: error.message });
 
@@ -21,6 +27,7 @@ router.get("/", auth, async (req, res) => {
       title: r.title,
       date: r.reminder_date,
       time: r.reminder_time,
+      completed: r.completed,
       deleted: r.completed === true,
     }))
   );

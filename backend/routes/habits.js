@@ -33,8 +33,10 @@ router.get("/", auth, async (req, res) => {
     return {
       id: h.id,
       name: h.name,
-      completedDates: dates, // keep for toggle UI
-      streak,                // ✅ SINGLE SOURCE
+      completedDates: dates,
+      streak,
+      completed: h.completed,
+      deleted: h.completed === false
     };
   });
 
