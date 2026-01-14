@@ -13,71 +13,93 @@ function Habits() {
 
   /* LOAD */
   const fetchHabits = async () => {
-  const token = localStorage.getItem("token");
-  if (!token) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-  try {
-    const res = await fetch(`${API_BASE}/habits`, {
-      headers: {
-        Authorization: "Bearer " + token,
-      },
-    });
+    try {
+      const res = await fetch(`${API_BASE}/habits`, {
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      });
 
-    const data = await res.json();
-    if (Array.isArray(data)) {
-      setHabits(data);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setHabits(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch habits", err);
     }
-  } catch (err) {
-    console.error("Failed to fetch habits", err);
-  }
-};
+  };
 
-useEffect(() => {
-  fetchHabits();
-}, []);
+  useEffect(() => {
+    fetchHabits();
+  }, []);
 
-/* TOGGLE CHECK */
-const toggleHabit = async (id) => {
-  const token = localStorage.getItem("token");
-  if (!token) return;
+  /* TOGGLE CHECK */
+  const toggleHabit = async (id) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-  try {
-    const res = await fetch(`${API_BASE}/habits/${id}/toggle`, {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + token,
-      },
-    });
+    try {
+      const res = await fetch(`${API_BASE}/habits/${id}/toggle`, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    setHabits(prev =>
-      prev.map(h =>
-        h.id === id ? { ...h, completedDates: data.completedDates } : h
-      )
-    );
-  } catch (err) {
-    console.error("Toggle habit failed", err);
-  }
-};
+      setHabits(prev =>
+        prev.map(h =>
+          h.id === id ? { ...h, completedDates: data.completedDates } : h
+        )
+      );
+    } catch (err) {
+      console.error("Toggle habit failed", err);
+    }
+  };
 
 
   const handleSaveHabit = async () => {
-  if (!newHabitName.trim()) return;
+    if (!newHabitName.trim()) return;
 
-  const token = localStorage.getItem("token");
-  if (!token) {
-    alert("Please login again");
-    return;
-  }
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Please login again");
+      return;
+    }
 
-  try {
-    // 🔹 EDIT HABIT
-    if (editingHabitId) {
-      const res = await fetch(
-        `${API_BASE}/habits/${editingHabitId}`,
-        {
-          method: "PUT",
+    try {
+      // 🔹 EDIT HABIT
+      if (editingHabitId) {
+        const res = await fetch(
+          `${API_BASE}/habits/${editingHabitId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: "Bearer " + token,
+            },
+            body: JSON.stringify({
+              name: newHabitName.trim(),
+            }),
+          }
+        );
+
+        const updatedHabit = await res.json();
+
+        setHabits(
+          habits.map((h) =>
+            h.id === editingHabitId ? updatedHabit : h
+          )
+        );
+      }
+      // 🔹 ADD HABIT
+      else {
+        const res = await fetch(`${API_BASE}/habits`, {
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: "Bearer " + token,
@@ -85,84 +107,75 @@ const toggleHabit = async (id) => {
           body: JSON.stringify({
             name: newHabitName.trim(),
           }),
-        }
-      );
+        });
 
-      const updatedHabit = await res.json();
+        const newHabit = await res.json();
 
-      setHabits(
-        habits.map((h) =>
-          h.id === editingHabitId ? updatedHabit : h
-        )
-      );
+        setHabits([...habits, newHabit]);
+      }
+
+      setNewHabitName("");
+      setEditingHabitId(null);
+      setShowHabitModal(false);
+    } catch (err) {
+      console.error("Habit save failed", err);
+      alert("Failed to save habit");
     }
-    // 🔹 ADD HABIT
-    else {
-      const res = await fetch(`${API_BASE}/habits`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + token,
-        },
-        body: JSON.stringify({
-          name: newHabitName.trim(),
-        }),
-      });
-
-      const newHabit = await res.json();
-
-      setHabits([...habits, newHabit]);
-    }
-
-    setNewHabitName("");
-    setEditingHabitId(null);
-    setShowHabitModal(false);
-  } catch (err) {
-    console.error("Habit save failed", err);
-    alert("Failed to save habit");
-  }
-};
+  };
 
   /* RESET */
- const resetToday = () => {
-  // just refetch, backend is source of truth
-  fetchHabits();
-};
+  const resetToday = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      await fetch(`${API_BASE}/habits/reset-today`, {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      });
+      // then refetch, backend is source of truth
+      fetchHabits();
+    } catch (err) {
+      console.error("Reset today failed", err);
+    }
+  };
 
 
   /* SOFT DELETE WITH ANIMATION */
   const deleteHabit = async (id) => {
     const habitToArchive = habits.find(h => h.id === id);
 
-  if (habitToArchive) {
-    const stored = JSON.parse(localStorage.getItem("habits")) || [];
-    localStorage.setItem(
-      "habits",
-      JSON.stringify([...stored, { ...habitToArchive, deleted: true }])
-    );
-  }
-  const token = localStorage.getItem("token");
-  if (!token) return;
+    if (habitToArchive) {
+      const stored = JSON.parse(localStorage.getItem("habits")) || [];
+      localStorage.setItem(
+        "habits",
+        JSON.stringify([...stored, { ...habitToArchive, deleted: true }])
+      );
+    }
+    const token = localStorage.getItem("token");
+    if (!token) return;
 
-  setRemovingHabitId(id);
+    setRemovingHabitId(id);
 
-  setTimeout(async () => {
-    await fetch(`${API_BASE}/habits/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: "Bearer " + token,
-      },
-    });
+    setTimeout(async () => {
+      await fetch(`${API_BASE}/habits/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      });
 
-    setHabits(prev => prev.filter(h => h.id !== id));
-    setRemovingHabitId(null);
-  }, 250);
-};
+      setHabits(prev => prev.filter(h => h.id !== id));
+      setRemovingHabitId(null);
+    }, 250);
+  };
 
 
- const filteredHabits = habits.filter(h =>
-  h.name.toLowerCase().includes(search.toLowerCase())
-);
+  const filteredHabits = habits.filter(h =>
+    h.name.toLowerCase().includes(search.toLowerCase())
+  );
 
 
   const undoneHabits = filteredHabits.filter(
@@ -209,9 +222,8 @@ const toggleHabit = async (id) => {
             return (
               <li
                 key={h.id}
-                className={`habit-item ${
-                  removingHabitId === h.id ? "fade-out" : "fade-in"
-                }`}
+                className={`habit-item ${removingHabitId === h.id ? "fade-out" : "fade-in"
+                  }`}
               >
                 <div className="habit-left">
                   <div

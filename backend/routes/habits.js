@@ -126,6 +126,42 @@ router.put("/:id", auth, async (req, res) => {
 });
 
 /* ===========================
+   RESET TODAY
+=========================== */
+router.post("/reset-today", auth, async (req, res) => {
+  const userId = req.user.id;
+  const todayDate = today();
+
+  try {
+    // 1. Fetch all active habits
+    const { data: habits, error: fetchError } = await supabase
+      .from("habits")
+      .select("id, completed_dates")
+      .eq("user_id", userId)
+      .eq("completed", true);
+
+    if (fetchError) throw fetchError;
+
+    // 2. Filter out today's date from each habit
+    const updates = habits.map(h => {
+      const newDates = (h.completed_dates || []).filter(d => d !== todayDate);
+      return supabase
+        .from("habits")
+        .update({ completed_dates: newDates })
+        .eq("id", h.id)
+        .eq("user_id", userId);
+    });
+
+    await Promise.all(updates);
+
+    res.json({ msg: "Today's progress reset" });
+  } catch (err) {
+    console.error("Reset today error:", err);
+    res.status(500).json({ error: "Failed to reset today's progress" });
+  }
+});
+
+/* ===========================
    DELETE HABIT (SOFT)
 =========================== */
 router.delete("/:id", auth, async (req, res) => {
