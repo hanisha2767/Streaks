@@ -4,6 +4,27 @@ const supabase = require("../src/supabaseClient");
 const auth = require("../middleware/authMiddleware");
 
 // ===============================
+// HELPER: Ensure User Profile
+// ===============================
+async function ensureProfile(user) {
+  if (!user) return;
+  const username = user.email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "");
+
+  const { error } = await supabase
+    .from("profiles")
+    .upsert({
+      id: user.id,
+      email: user.email,
+      username: username,
+      updated_at: new Date().toISOString(),
+    });
+
+  if (error) {
+    console.error("Profile sync error:", error.message);
+  }
+}
+
+// ===============================
 // REGISTER (Supabase)
 // POST /auth/register
 // ===============================
@@ -22,6 +43,9 @@ router.post("/register", async (req, res) => {
   if (error) {
     return res.status(400).json({ message: error.message });
   }
+
+  // ✅ SYNC PROFILE
+  await ensureProfile(data.user);
 
   res.status(201).json({
     message: "Signup successful",
@@ -50,6 +74,9 @@ router.post("/login", async (req, res) => {
   if (error) {
     return res.status(400).json({ message: error.message });
   }
+
+  // ✅ BACKFILL/SYNC PROFILE
+  await ensureProfile(data.user);
 
   res.json({
     message: "Login successful",
