@@ -45,21 +45,32 @@ function Reminders() {
     if (!token) return;
 
     try {
-      const res = await fetch(`${API_BASE}/reminders`
-        , {
-          headers: {
-            Authorization: "Bearer " + token,
-          },
-        });
+      const res = await fetch(`${API_BASE}/reminders`, {
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      });
 
       const data = await res.json();
+
+      // ✅ backend result
       setReminders(data);
+
+      // ✅ cache for fast page switching
+      localStorage.setItem("reminders", JSON.stringify(data));
     } catch (err) {
       console.error("Failed to fetch reminders", err);
     }
   };
 
   useEffect(() => {
+    // ✅ instant render from cache (if available)
+    const cached = localStorage.getItem("reminders");
+    if (cached) {
+      setReminders(JSON.parse(cached));
+    }
+
+    // ✅ backend sync (source of truth)
     fetchReminders();
   }, []);
 
@@ -79,6 +90,7 @@ function Reminders() {
         JSON.stringify([...stored, { ...reminderToArchive, deleted: true }])
       );
     }
+
     try {
       await fetch(`${API_BASE}/reminders/${id}`, {
         method: "DELETE",
@@ -157,7 +169,7 @@ function Reminders() {
       <div className="habits-top">
         <div>
           <h2 className="habits-title">Reminders</h2>
-          <p className="habits-date">{formatCoolDate(today)}</p>
+          
         </div>
 
         <div className="habits-controls">
